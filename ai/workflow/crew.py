@@ -1,3 +1,4 @@
+
 """
 RepoMind-AI
 Main multi-agent CrewAI workflow.
@@ -5,6 +6,8 @@ Main multi-agent CrewAI workflow.
 The workflow runs repository analysis agents sequentially
 and passes the appropriate previous findings to each stage.
 """
+
+import time
 
 from crewai import Crew, Process
 
@@ -39,6 +42,12 @@ class RepoMindCrew:
 
     def run(self):
         """Create and execute the RepoMind-AI workflow."""
+
+        total_start = time.perf_counter()
+
+        print("\n" + "=" * 60)
+        print("RepoMind-AI: Initializing multi-agent analysis")
+        print("=" * 60)
 
         # ---------------------------------------------------------
         # Create agents
@@ -144,11 +153,6 @@ class RepoMindCrew:
 
         # ---------------------------------------------------------
         # Final summary
-        #
-        # IMPORTANT:
-        # The summary receives the analysis findings but NOT the
-        # raw repository-analysis task. This prevents the small
-        # local model from falling back to raw GitHub JSON.
         # ---------------------------------------------------------
 
         summary_task = create_summary_task(
@@ -194,10 +198,32 @@ class RepoMindCrew:
         )
 
         # ---------------------------------------------------------
-        # Execute workflow
+        # Execute workflow and measure duration
         # ---------------------------------------------------------
 
-        result = crew.kickoff()
+        print("\nStarting CrewAI analysis...")
+        analysis_start = time.perf_counter()
+
+        try:
+            result = crew.kickoff()
+        except Exception as exc:
+            elapsed = time.perf_counter() - analysis_start
+
+            print("\n" + "=" * 60)
+            print("RepoMind-AI analysis failed")
+            print(f"Elapsed time before failure: {elapsed:.2f} seconds")
+            print(f"Error: {exc}")
+            print("=" * 60)
+
+            raise
+
+        analysis_elapsed = time.perf_counter() - analysis_start
+        total_elapsed = time.perf_counter() - total_start
+
+        print("\n" + "=" * 60)
+        print("RepoMind-AI analysis timing")
+        print(f"CrewAI execution: {analysis_elapsed:.2f} seconds")
+        print(f"Total workflow time: {total_elapsed:.2f} seconds")
+        print("=" * 60)
 
         return result
-

@@ -733,10 +733,366 @@ Index · HTML
     grid-template-columns: 1fr;
   }
 }
+/* ============================================================
+   AUTHENTICATION UI
+   ============================================================ */
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(57,255,138,0.08),
+      transparent 42%
+    ),
+    rgba(5,7,10,0.96);
+  backdrop-filter: blur(14px);
+}
+
+.auth-overlay.hidden {
+  display: none;
+}
+
+.auth-card {
+  width: min(440px, 100%);
+  padding: 38px;
+  background: rgba(10,15,19,0.94);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow:
+    0 30px 100px rgba(0,0,0,0.65),
+    0 0 50px rgba(57,255,138,0.05);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.auth-brand .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+}
+
+.auth-title {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: -6px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 13px 14px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.auth-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 20px rgba(57,255,138,0.08);
+}
+
+.auth-button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 2px;
+  background: var(--green);
+  color: #05070a;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow .2s, transform .2s;
+}
+
+.auth-button:hover {
+  box-shadow: 0 0 30px rgba(57,255,138,0.35);
+  transform: translateY(-1px);
+}
+
+.auth-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  transform: none;
+}
+
+.auth-switch {
+  margin-top: 22px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.auth-switch button {
+  border: none;
+  background: none;
+  color: var(--green);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.auth-error {
+  display: none;
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255,59,107,0.35);
+  background: rgba(255,59,107,0.06);
+  color: #ff8baa;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-error.show {
+  display: block;
+}
+
+.auth-user {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.auth-user.visible {
+  display: flex;
+}
+
+.auth-user-name {
+  color: var(--green);
+}
+
+.auth-logout {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.auth-logout:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
+
+  .auth-title {
+    font-size: 27px;
+  }
+}
 </style>
 </head>
+
 <body>
- 
+ <!-- ============================================================
+     AUTHENTICATION OVERLAY
+     ============================================================ -->
+
+<div class="auth-overlay" id="authOverlay">
+
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <span class="dot"></span>
+      REPOMIND_AI
+    </div>
+
+    <!-- LOGIN -->
+
+    <div id="loginView">
+
+      <div class="auth-title">
+        Welcome back.
+      </div>
+
+      <div class="auth-subtitle">
+        Sign in to analyze repositories and access your RepoMind workspace.
+      </div>
+
+      <div class="auth-error" id="loginError"></div>
+
+      <form class="auth-form" id="loginForm">
+
+        <label class="auth-label" for="loginEmail">
+          Email
+        </label>
+
+        <input
+          class="auth-input"
+          id="loginEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+        <label class="auth-label" for="loginPassword">
+          Password
+        </label>
+
+        <input
+          class="auth-input"
+          id="loginPassword"
+          type="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        >
+
+        <button
+          class="auth-button"
+          id="loginButton"
+          type="submit"
+        >
+          Sign in →
+        </button>
+
+      </form>
+
+      <div class="auth-switch">
+        Don't have an account?
+        <button type="button" id="showRegister">
+          Create one
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- REGISTER -->
+
+    <div id="registerView" style="display:none;">
+
+      <div class="auth-title">
+        Create account.
+      </div>
+
+      <div class="auth-subtitle">
+        Create your RepoMind account to start analyzing repositories.
+      </div>
+
+      <div class="auth-error" id="registerError"></div>
+
+      <form class="auth-form" id="registerForm">
+
+        <label class="auth-label" for="registerUsername">
+          Username
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerUsername"
+          type="text"
+          placeholder="your username"
+          autocomplete="username"
+          required
+        >
+
+        <label class="auth-label" for="registerEmail">
+          Email
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+        <label class="auth-label" for="registerPassword">
+          Password
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerPassword"
+          type="password"
+          placeholder="Create a password"
+          autocomplete="new-password"
+          required
+        >
+
+        <button
+          class="auth-button"
+          id="registerButton"
+          type="submit"
+        >
+          Create account →
+        </button>
+
+      </form>
+
+      <div class="auth-switch">
+        Already have an account?
+        <button type="button" id="showLogin">
+          Sign in
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
 <div class="cursor-dot"></div>
 <div class="cursor-ring"></div>
 <canvas id="graph"></canvas>
@@ -744,7 +1100,28 @@ Index · HTML
 <div class="vignette"></div>
  
 <nav id="nav">
-  <div class="logo"><span class="dot"></span>REPOMIND_AI</div>
+  <div style="display:flex;align-items:center;gap:14px;">
+
+  <div class="auth-user" id="authUser">
+    <span>
+      user:
+      <span class="auth-user-name" id="authUsername"></span>
+    </span>
+
+    <button
+      class="auth-logout"
+      id="logoutButton"
+      type="button"
+    >
+      Logout
+    </button>
+  </div>
+
+  <a class="nav-cta" href="#start">
+    Analyze a repo →
+  </a>
+
+</div>
   <div class="navlinks">
     <a href="#how">how it works</a>
     <a href="#features">modules</a>
@@ -1235,6 +1612,415 @@ step();
 // ============================================================
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+// ============================================================
+// RepoMind-AI Authentication
+// ============================================================
+
+const AUTH_TOKEN_KEY = "repomind_access_token";
+const AUTH_USER_KEY = "repomind_user";
+
+const authOverlay = document.getElementById("authOverlay");
+
+const loginView = document.getElementById("loginView");
+const registerView = document.getElementById("registerView");
+
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+
+const loginButton = document.getElementById("loginButton");
+const registerButton = document.getElementById("registerButton");
+
+const loginError = document.getElementById("loginError");
+const registerError = document.getElementById("registerError");
+
+const showRegisterButton =
+  document.getElementById("showRegister");
+
+const showLoginButton =
+  document.getElementById("showLogin");
+
+const authUser =
+  document.getElementById("authUser");
+
+const authUsername =
+  document.getElementById("authUsername");
+
+const logoutButton =
+  document.getElementById("logoutButton");
+
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+
+function saveAuthSession(token, user) {
+  localStorage.setItem(
+    AUTH_TOKEN_KEY,
+    token
+  );
+
+  localStorage.setItem(
+    AUTH_USER_KEY,
+    JSON.stringify(user)
+  );
+}
+
+
+function clearAuthSession() {
+  localStorage.removeItem(
+    AUTH_TOKEN_KEY
+  );
+
+  localStorage.removeItem(
+    AUTH_USER_KEY
+  );
+}
+
+
+function getStoredUser() {
+  const rawUser =
+    localStorage.getItem(AUTH_USER_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    return null;
+  }
+}
+
+
+function showAuthError(element, message) {
+  element.textContent = message;
+  element.classList.add("show");
+}
+
+
+function clearAuthError(element) {
+  element.textContent = "";
+  element.classList.remove("show");
+}
+
+
+function showLoginScreen() {
+  loginView.style.display = "block";
+  registerView.style.display = "none";
+
+  clearAuthError(loginError);
+  clearAuthError(registerError);
+
+  authOverlay.classList.remove("hidden");
+}
+
+
+function showRegisterScreen() {
+  loginView.style.display = "none";
+  registerView.style.display = "block";
+
+  clearAuthError(loginError);
+  clearAuthError(registerError);
+
+  authOverlay.classList.remove("hidden");
+}
+
+
+function showAuthenticatedUI(user) {
+  authOverlay.classList.add("hidden");
+
+  if (user) {
+    authUsername.textContent =
+      user.username || user.email || "user";
+
+    authUser.classList.add("visible");
+  }
+}
+
+
+function logout() {
+  clearAuthSession();
+
+  authUser.classList.remove("visible");
+
+  loginForm.reset();
+  registerForm.reset();
+
+  showLoginScreen();
+}
+
+
+async function verifyExistingSession() {
+
+  const token = getAuthToken();
+
+  if (!token) {
+    showLoginScreen();
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE_URL}/auth/me`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Session expired.");
+    }
+
+    const user = await response.json();
+
+    localStorage.setItem(
+      AUTH_USER_KEY,
+      JSON.stringify(user)
+    );
+
+    showAuthenticatedUI(user);
+
+  } catch (error) {
+
+    console.warn(
+      "RepoMind authentication session invalid:",
+      error
+    );
+
+    clearAuthSession();
+    showLoginScreen();
+  }
+}
+
+
+// ------------------------------------------------------------
+// Switch between Login and Register
+// ------------------------------------------------------------
+
+showRegisterButton.addEventListener(
+  "click",
+  showRegisterScreen
+);
+
+showLoginButton.addEventListener(
+  "click",
+  showLoginScreen
+);
+
+
+// ------------------------------------------------------------
+// Login
+// ------------------------------------------------------------
+
+loginForm.addEventListener(
+  "submit",
+  async (event) => {
+
+    event.preventDefault();
+
+    clearAuthError(loginError);
+
+    const email =
+      document.getElementById("loginEmail")
+        .value
+        .trim();
+
+    const password =
+      document.getElementById("loginPassword")
+        .value;
+
+    loginButton.disabled = true;
+    loginButton.textContent = "Signing in...";
+
+    try {
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/login`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.detail ||
+          "Login failed."
+        );
+      }
+
+      saveAuthSession(
+        data.access_token,
+        data.user
+      );
+
+      showAuthenticatedUI(
+        data.user
+      );
+
+    } catch (error) {
+
+      console.error(
+        "RepoMind login error:",
+        error
+      );
+
+      showAuthError(
+        loginError,
+        error.message ||
+        "Unable to sign in."
+      );
+
+    } finally {
+
+      loginButton.disabled = false;
+      loginButton.textContent = "Sign in →";
+    }
+  }
+);
+
+
+// ------------------------------------------------------------
+// Register
+// ------------------------------------------------------------
+
+registerForm.addEventListener(
+  "submit",
+  async (event) => {
+
+    event.preventDefault();
+
+    clearAuthError(registerError);
+
+    const username =
+      document.getElementById(
+        "registerUsername"
+      ).value.trim();
+
+    const email =
+      document.getElementById(
+        "registerEmail"
+      ).value.trim();
+
+    const password =
+      document.getElementById(
+        "registerPassword"
+      ).value;
+
+    registerButton.disabled = true;
+    registerButton.textContent =
+      "Creating account...";
+
+    try {
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/register`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            username: username,
+            email: email,
+            password: password
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.detail ||
+          "Registration failed."
+        );
+      }
+
+      /*
+       * Registration creates the account.
+       * Now switch to login and let the user
+       * authenticate normally.
+       */
+
+      loginView.style.display = "block";
+      registerView.style.display = "none";
+
+      document.getElementById(
+        "loginEmail"
+      ).value = email;
+
+      document.getElementById(
+        "loginPassword"
+      ).value = "";
+
+      clearAuthError(registerError);
+
+      showAuthError(
+        loginError,
+        "Account created successfully. Please sign in."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "RepoMind registration error:",
+        error
+      );
+
+      showAuthError(
+        registerError,
+        error.message ||
+        "Unable to create account."
+      );
+
+    } finally {
+
+      registerButton.disabled = false;
+      registerButton.textContent =
+        "Create account →";
+    }
+  }
+);
+
+
+// ------------------------------------------------------------
+// Logout
+// ------------------------------------------------------------
+
+logoutButton.addEventListener(
+  "click",
+  logout
+);
+
+
+// ------------------------------------------------------------
+// Check authentication when page loads
+// ------------------------------------------------------------
+
+verifyExistingSession();
 
 const repoInput = document.querySelector(".repo-input input");
 const analyzeButton = document.querySelector(".repo-input button");
@@ -1343,14 +2129,12 @@ async function analyzeRepository() {
 
   try {
 
-    const response = await fetch(
-      `${API_BASE_URL}/analyze`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
+    const response = await fetch(`${API_BASE_URL}/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAuthToken()}`
+  },
 
         body: JSON.stringify({
           repository: repository
@@ -1368,12 +2152,21 @@ async function analyzeRepository() {
 
     if (!response.ok) {
 
-      throw new Error(
-        data.detail ||
-        "Repository analysis failed."
-      );
+  if (response.status === 401) {
 
-    }
+    clearAuthSession();
+    showLoginScreen();
+
+    throw new Error(
+      "Your session has expired. Please sign in again."
+    );
+  }
+
+  throw new Error(
+    data.detail ||
+    "Repository analysis failed."
+  );
+}
 
 
     // --------------------------------------------------------
@@ -1716,9 +2509,13 @@ async function loadAnalysisHistory() {
   try {
 
     const response = await fetch(
-      `${API_BASE_URL}/analyses`
-    );
-
+  `${API_BASE_URL}/analyses`,
+  {
+    headers: {
+      "Authorization": `Bearer ${getAuthToken()}`
+    }
+  }
+);
 
     const data = await response.json();
 
@@ -1899,8 +2696,13 @@ async function loadSingleAnalysis(
 
 
     const response = await fetch(
-      `${API_BASE_URL}/analyses/${analysisId}`
-    );
+  `${API_BASE_URL}/analyses/${analysisId}`,
+  {
+    headers: {
+      "Authorization": `Bearer ${getAuthToken()}`
+    }
+  }
+);
 
 
     loadRepositoryInsights(analysis.id);
@@ -2030,12 +2832,23 @@ function escapeHtml(value) {
 loadAnalysisHistory();
 async function loadDashboard() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dashboard`);
+        const token = localStorage.getItem("repomind_access_token");
+
+        if (!token) {
+            throw new Error("No login token found. Please sign in again.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/dashboard`, {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
         const data = await response.json();
 
         if (!response.ok) {
             throw new Error(
-                data.detail || "Dashboard request failed."
+                data.detail || `Dashboard request failed (${response.status}).`
             );
         }
 
@@ -2045,7 +2858,6 @@ async function loadDashboard() {
         console.error("Dashboard error:", error);
     }
 }
-
 
 function updateDashboard(data) {
 
@@ -2139,8 +2951,13 @@ async function loadRepositoryInsights(analysisId) {
 
     try {
         const response = await fetch(
-            `${API_BASE_URL}/analyses/${analysisId}/insights`
-        );
+    `${API_BASE_URL}/analyses/${analysisId}/insights`,
+    {
+        headers: {
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    }
+);
 
         const data = await response.json();
 

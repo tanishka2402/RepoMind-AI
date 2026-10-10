@@ -157,6 +157,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# JavaScript dependencies (including nested projects)
+**/node_modules/
+
 # Spyder project settings
 .spyderproject
 .spyproject

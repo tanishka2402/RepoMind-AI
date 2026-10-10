@@ -3,7 +3,7 @@ Pydantic schemas used by the RepoMind-AI API.
 """
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -40,10 +40,7 @@ class AnalysisResponse(BaseModel):
 
     repository: RepositoryResponse
 
-    model_config = {
-        "from_attributes": True
-    }
-
+    blockchain: Optional[dict] = None
 
 # =========================================================
 # ANALYZE RESPONSE
@@ -52,6 +49,7 @@ class AnalysisResponse(BaseModel):
 class AnalyzeResponse(BaseModel):
     status: str
     repository: RepositoryResponse
+    blockchain: Optional[dict] = None
     analysis: AnalysisResponse
 
 
@@ -91,3 +89,36 @@ class HealthResponse(BaseModel):
 class RootResponse(BaseModel):
     message: str
     status: str
+
+# =========================================================
+# AUTHENTICATION
+# =========================================================
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse

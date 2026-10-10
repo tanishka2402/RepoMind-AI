@@ -8,6 +8,12 @@ from sqlalchemy.orm import Session
 
 from .models import Analysis, Repository
 
+from .models import (
+    Analysis,
+    Repository,
+    StructuredAnalysis,
+)
+
 
 # =========================================================
 # REPOSITORY
@@ -81,21 +87,40 @@ def get_or_create_repository(
 # =========================================================
 # CREATE ANALYSIS
 # =========================================================
-
 def create_analysis(
     db: Session,
     repository: Repository,
-    result: Dict[str, Any],
-) -> Analysis:
+    result: dict,
+    user=None,
+):
     """
-    Save a completed RepoMind-AI analysis.
+    Save a completed RepoMind-AI analysis and its structured
+    analysis representation.
     """
 
-    analysis_data = result.get("analysis", {})
-    ai_data = result.get("ai", {})
+    analysis_data = result.get(
+        "analysis",
+        {},
+    )
+
+    ai_data = result.get(
+        "ai",
+        {},
+    )
+
+    structured_data = analysis_data.get(
+        "structured",
+        {},
+    )
 
     analysis = Analysis(
         repository_id=repository.id,
+
+        user_id=(
+            user.id
+            if user is not None
+            else None
+        ),
 
         status=result.get(
             "status",
@@ -134,12 +159,60 @@ def create_analysis(
     )
 
     db.add(analysis)
+
+    db.flush()
+
+    structured_analysis = StructuredAnalysis(
+        analysis_id=analysis.id,
+
+        repository=structured_data.get(
+            "repository",
+            repository.full_name,
+        ),
+
+        executive_summary=structured_data.get(
+            "executive_summary",
+            "",
+        ),
+
+        architecture=structured_data.get(
+            "architecture",
+            {},
+        ),
+
+        code_quality=structured_data.get(
+            "code_quality",
+            {},
+        ),
+
+        documentation=structured_data.get(
+            "documentation",
+            {},
+        ),
+
+        security=structured_data.get(
+            "security",
+            {},
+        ),
+
+        risk=structured_data.get(
+            "risk",
+            {},
+        ),
+
+        recommendations=structured_data.get(
+            "recommendations",
+            {},
+        ),
+    )
+
+    db.add(structured_analysis)
+
     db.commit()
+
     db.refresh(analysis)
 
     return analysis
-
-
 # =========================================================
 # GET ANALYSIS
 # =========================================================
@@ -157,7 +230,6 @@ def get_analysis(
         .filter(Analysis.id == analysis_id)
         .first()
     )
-
 
 # =========================================================
 # GET REPOSITORY

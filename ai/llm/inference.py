@@ -69,7 +69,7 @@ class InferenceEngine:
             for key, value in inputs.items()
         }
 
-        with torch.no_grad():
+        with torch.inference_mode()
             output = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
