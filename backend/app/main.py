@@ -18,6 +18,11 @@ import json
 import sys
 from pathlib import Path
 from typing import List, Optional
+from .architecture_preview import router as architecture_preview_router
+from dotenv import load_dotenv
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,8 +53,6 @@ from .schemas import (
 # ============================================================
 # PROJECT PATH
 # ============================================================
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 AI_PATH = PROJECT_ROOT / "ai"
 
@@ -86,7 +89,7 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
-
+app.include_router(architecture_preview_router)
 
 # ============================================================
 # CORS
@@ -186,6 +189,55 @@ class AnalyzeRequest(BaseModel):
                 )
 
         return value
+
+
+# ============================================================
+# ARCHITECTURE PREVIEW
+# ============================================================
+
+@app.post("/architecture-preview")
+def architecture_preview(
+    request: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Return an architecture-focused preview without saving an analysis.
+
+    This route is defined directly on the main app so the frontend's
+    POST /architecture-preview URL exists even if the auxiliary router
+    uses a different prefix or path.
+    """
+    try:
+        result = run_repository_analysis(request.repository)
+        if not isinstance(result, dict):
+            raise ValueError("The repository analysis pipeline returned an invalid result.")
+
+        repository_data = result.get("repository") or {}
+        analysis_data = result.get("analysis") or {}
+        structured = analysis_data.get("structured") or result.get("structured") or {}
+        architecture = structured.get("architecture") or result.get("architecture")
+
+        # Some pipeline versions return the architecture section as text
+        # inside the generated report rather than as structured data.
+        if architecture is None:
+            report = analysis_data.get("report") or result.get("report") or result.get("final_report") or ""
+            architecture = {
+                "summary": "Architecture details were not returned as structured data.",
+                "report_excerpt": report[:12000] if isinstance(report, str) else "",
+            }
+
+        return {
+            "status": result.get("status", "completed"),
+            "repository": repository_data.get("full_name") or request.repository,
+            "architecture": architecture,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        print(f"Architecture preview error: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail="Architecture preview failed. Please check the repository and try again.",
+        ) from exc
 
 
 # ============================================================

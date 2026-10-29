@@ -4,8 +4,12 @@ Backend interface for RepoMind-AI.
 This module provides a simple Python function that the
 FastAPI backend can use to run repository analysis.
 """
+from security.scanner import scan_repository
 
 from typing import Any, Dict
+from contextlib import contextmanager
+import logging
+from time import perf_counter
 
 from github_service.repository_fetcher import (
     RepositoryFetcher,
@@ -41,6 +45,32 @@ from reports.structured_analysis import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _timed_stage(stage: str, **fields: Any):
+    """Log elapsed wall-clock time for a pipeline stage, including failures."""
+    started = perf_counter()
+    try:
+        yield
+    except Exception:
+        logger.exception(
+            "RepoMind timing | stage=%s | status=error | elapsed_seconds=%.3f | details=%s",
+            stage,
+            perf_counter() - started,
+            fields,
+        )
+        raise
+    else:
+        logger.info(
+            "RepoMind timing | stage=%s | status=ok | elapsed_seconds=%.3f | details=%s",
+            stage,
+            perf_counter() - started,
+            fields,
+        )
+
+
 def analyze_repository(
     repository: str,
 ) -> Dict[str, Any]:
@@ -74,191 +104,193 @@ def analyze_repository(
         Backend response
     """
 
-    # ============================================================
-    # 1. Fetch repository
-    # ============================================================
+    with _timed_stage("analysis_pipeline_total", repository=repository):
+        # ============================================================
+        # 1. Fetch repository
+        # ============================================================
 
-    fetcher = RepositoryFetcher()
+        with _timed_stage("github_fetch", repository=repository):
+            fetcher = RepositoryFetcher()
+            repository_data = fetcher.fetch(repository)
 
-    repository_data = fetcher.fetch(
-        repository
-    )
+        # Static security scan: never execute repository files.
+        with _timed_stage("security_scan"):
+            security_scan = scan_repository(repository_data)
 
-    # ============================================================
-    # 2. Build deterministic repository intelligence
-    # ============================================================
 
-    repository_intelligence = (
-        build_repository_intelligence(
-            repository_data
+        # ============================================================
+        # 2. Build deterministic repository intelligence
+        # ============================================================
+
+        with _timed_stage("repository_intelligence"):
+            repository_intelligence = build_repository_intelligence(
+                repository_data
+            )
+
+        # ============================================================
+        # 3. Build AI context
+        # ============================================================
+
+        with _timed_stage("context_build"):
+            context_builder = ContextBuilder()
+            repository_context = context_builder.build(repository_data)
+
+        # ============================================================
+        # 4. Run CrewAI
+        # ============================================================
+
+        with _timed_stage("crewai_run"):
+            crew = RepoMindCrew(repository_context=repository_context)
+            ai_result = crew.run()
+            raw_ai_report = str(ai_result)
+
+        # ============================================================
+        # 5. Validate raw AI report
+        # ============================================================
+
+        with _timed_stage("raw_ai_report_validation"):
+            ai_validation = validate_report(
+                report_text=raw_ai_report,
+                repository_context=repository_context,
+            )
+
+        # ============================================================
+        # 6. Build deterministic grounded final report
+        # ============================================================
+
+        with _timed_stage("grounded_report_build"):
+            final_report = build_grounded_report(
+                repository_data,
+                repository_intelligence,
+            )
+
+        # ============================================================
+        # 7. Validate final report
+        # ============================================================
+
+        with _timed_stage("final_report_validation"):
+            final_validation = validate_report(
+                report_text=final_report,
+                repository_context=repository_context,
+            )
+
+        # ============================================================
+        # 8. Build structured analysis
+        # ============================================================
+
+        with _timed_stage("structured_analysis_build"):
+            structured_analysis = build_structured_analysis(
+                repository_data=repository_data,
+                raw_ai_report=raw_ai_report,
+            )
+
+        # ============================================================
+        # 9. Add Repository Intelligence
+        # ============================================================
+
+        structured_analysis_data = (
+            structured_analysis.to_dict()
         )
-    )
 
-    # ============================================================
-    # 3. Build AI context
-    # ============================================================
+        structured_analysis_data[
+            "repository_overview"
+        ] = repository_intelligence
 
-    context_builder = ContextBuilder()
+        # ============================================================
+        # 10. Score structured analysis
+        # ============================================================
 
-    repository_context = context_builder.build(
-        repository_data
-    )
+        with _timed_stage("repository_scoring"):
+            structured_analysis = score_repository_analysis(
+                report=structured_analysis,
+                repository_data=repository_data,
+            )
 
-    # ============================================================
-    # 4. Run CrewAI
-    # ============================================================
+        structured_analysis_data = (
+            structured_analysis.to_dict()
+        )
 
-    crew = RepoMindCrew(
-        repository_context=repository_context
-    )
+        # ============================================================
+        # 11. Preserve Repository Intelligence after scoring
+        # ============================================================
 
-    ai_result = crew.run()
+        structured_analysis_data[
+            "repository_overview"
+        ] = repository_intelligence
 
-    raw_ai_report = str(
-        ai_result
-    )
+        # ============================================================
+        # 12. Calculate overall score
+        # ============================================================
 
-    # ============================================================
-    # 5. Validate raw AI report
-    # ============================================================
+        with _timed_stage("overall_score_calculation"):
+            structured_analysis_data[
+                "overall"
+            ] = calculate_overall_from_report(structured_analysis)
 
-    ai_validation = validate_report(
-        report_text=raw_ai_report,
-        repository_context=repository_context,
-    )
+        # ============================================================
+        # 13. Return backend response
+        # ============================================================
 
-    # ============================================================
-    # 6. Build deterministic grounded final report
-    # ============================================================
+        return {
+            "status": "completed",
 
-    final_report = build_grounded_report(
-        repository_data,
-        repository_intelligence,
-    )
+            "repository": {
+                "name": repository_data.get(
+                    "name"
+                ),
+                "full_name": repository_data.get(
+                    "full_name"
+                ),
+                "url": repository_data.get(
+                    "url"
+                ),
+                "default_branch": repository_data.get(
+                    "default_branch"
+                ),
+            },
 
-    # ============================================================
-    # 7. Validate final report
-    # ============================================================
+            "analysis": {
+                "report": final_report,
+                "security_scan": security_scan,
 
-    final_validation = validate_report(
-        report_text=final_report,
-        repository_context=repository_context,
-    )
+                "grounding_status": (
+                    final_validation.get(
+                        "status"
+                    )
+                ),
 
-    # ============================================================
-    # 8. Build structured analysis
-    # ============================================================
+                "evidence_count": (
+                    final_validation.get(
+                        "evidence_count",
+                        0,
+                    )
+                ),
 
-    structured_analysis = build_structured_analysis(
-        repository_data=repository_data,
-        raw_ai_report=raw_ai_report,
-    )
+                "warnings": (
+                    final_validation.get(
+                        "warnings",
+                        [],
+                    )
+                ),
 
-    # ============================================================
-    # 9. Add Repository Intelligence
-    # ============================================================
+                "structured": (
+                    structured_analysis_data
+                ),
 
-    structured_analysis_data = (
-        structured_analysis.to_dict()
-    )
+            },
 
-    structured_analysis_data[
-        "repository_overview"
-    ] = repository_intelligence
+            "ai": {
+                "grounding_status": (
+                    ai_validation.get(
+                        "status"
+                    )
+                ),
 
-    # ============================================================
-    # 10. Score structured analysis
-    # ============================================================
-
-    structured_analysis = score_repository_analysis(
-        report=structured_analysis,
-        repository_data=repository_data,
-    )
-
-    structured_analysis_data = (
-        structured_analysis.to_dict()
-    )
-
-    # ============================================================
-    # 11. Preserve Repository Intelligence after scoring
-    # ============================================================
-
-    structured_analysis_data[
-        "repository_overview"
-    ] = repository_intelligence
-
-    # ============================================================
-    # 12. Calculate overall score
-    # ============================================================
-
-    structured_analysis_data[
-        "overall"
-    ] = calculate_overall_from_report(
-        structured_analysis
-    )
-
-    # ============================================================
-    # 13. Return backend response
-    # ============================================================
-
-    return {
-        "status": "completed",
-
-        "repository": {
-            "name": repository_data.get(
-                "name"
-            ),
-            "full_name": repository_data.get(
-                "full_name"
-            ),
-            "url": repository_data.get(
-                "url"
-            ),
-            "default_branch": repository_data.get(
-                "default_branch"
-            ),
-        },
-
-        "analysis": {
-            "report": final_report,
-
-            "grounding_status": (
-                final_validation.get(
-                    "status"
-                )
-            ),
-
-            "evidence_count": (
-                final_validation.get(
-                    "evidence_count",
-                    0,
-                )
-            ),
-
-            "warnings": (
-                final_validation.get(
-                    "warnings",
-                    [],
-                )
-            ),
-
-            "structured": (
-                structured_analysis_data
-            ),
-        },
-
-        "ai": {
-            "grounding_status": (
-                ai_validation.get(
-                    "status"
-                )
-            ),
-
-            "evidence_count": (
-                ai_validation.get(
-                    "evidence_count",
-                    0,
-                )
-            ),
-        },
-    }
+                "evidence_count": (
+                    ai_validation.get(
+                        "evidence_count",
+                        0,
+                    )
+                ),
+            },
+        }

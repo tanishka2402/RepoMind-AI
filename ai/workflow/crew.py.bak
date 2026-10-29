@@ -1,0 +1,69 @@
+
+"""Optimized single-master-agent CrewAI workflow for RepoMind-AI.
+
+The master task consolidates the previous eight sequential LLM tasks into one
+focused synthesis call. Deterministic repository intelligence, static security
+scanning, validation, and scoring remain in backend_ai.py.
+"""
+
+import time
+
+from crewai import Crew, Process
+
+from agents import create_master_agent
+from workflow.tasks import create_master_analysis_task
+
+
+class RepoMindCrew:
+    """Run a single master-agent analysis over the prepared repository context."""
+
+    def __init__(self, repository_context: str):
+        self.repository_context = repository_context
+
+    def run(self):
+        total_start = time.perf_counter()
+
+        print("\n" + "=" * 60)
+        print("RepoMind-AI: Initializing master orchestrator")
+        print("=" * 60)
+
+        master_agent = create_master_agent()
+
+        master_task = create_master_analysis_task(
+            master_agent,
+            self.repository_context,
+        )
+
+        crew = Crew(
+            agents=[master_agent],
+            tasks=[master_task],
+            process=Process.sequential,
+            verbose=True,
+        )
+
+        print("\nStarting master-agent analysis...")
+        analysis_start = time.perf_counter()
+
+        try:
+            result = crew.kickoff()
+        except Exception as exc:
+            elapsed = time.perf_counter() - analysis_start
+
+            print("\n" + "=" * 60)
+            print("RepoMind-AI master analysis failed")
+            print(f"Elapsed time before failure: {elapsed:.2f} seconds")
+            print(f"Error: {exc}")
+            print("=" * 60)
+
+            raise
+
+        analysis_elapsed = time.perf_counter() - analysis_start
+        total_elapsed = time.perf_counter() - total_start
+
+        print("\n" + "=" * 60)
+        print("RepoMind-AI analysis timing")
+        print(f"Master LLM workflow: {analysis_elapsed:.2f} seconds")
+        print(f"Total workflow time: {total_elapsed:.2f} seconds")
+        print("=" * 60)
+
+        return result

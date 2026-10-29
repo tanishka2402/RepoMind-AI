@@ -1,0 +1,3054 @@
+
+
+Index · HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RepoMind AI — Your codebase, understood.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05070a;
+    --bg-panel:#0a0f13;
+    --bg-panel-2:#0e151a;
+    --line: rgba(57,255,138,0.14);
+    --text:#e8f3ee;
+    --text-dim:#7c9088;
+    --green:#39ff8a;
+    --green-dim: rgba(57,255,138,0.5);
+    --violet:#a78bfa;
+    --cyan:#38f0ff;
+    --danger:#ff3b6b;
+    --display: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --body: 'Inter', sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    overflow-x:hidden;
+    cursor:none;
+  }
+  ::selection{ background:var(--green); color:#05070a; }
+ 
+  a{color:inherit;text-decoration:none;}
+ 
+  /* ---------- custom cursor ---------- */
+  .cursor-dot, .cursor-ring{
+    position:fixed; top:0; left:0; pointer-events:none; z-index:9999;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    will-change:transform;
+  }
+  .cursor-dot{ width:6px; height:6px; background:var(--green); box-shadow:0 0 8px var(--green); }
+  .cursor-ring{ width:34px; height:34px; border:1px solid var(--green-dim); transition:width .2s,height .2s,border-color .2s,background .2s; }
+  .cursor-ring.active{ width:56px; height:56px; background:rgba(57,255,138,0.08); border-color:var(--green); }
+  @media (hover:none){ .cursor-dot,.cursor-ring{display:none;} body{cursor:auto;} }
+ 
+  /* ---------- background canvas ---------- */
+  #graph{ position:fixed; inset:0; width:100%; height:100%; z-index:0; opacity:0.55; }
+  .scanlines{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+  }
+ 
+  section{ position:relative; z-index:2; }
+ 
+  /* ---------- nav ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 5vw;
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid transparent;
+    transition:border-color .3s, background .3s;
+  }
+  nav.scrolled{ background:rgba(5,7,10,0.7); border-bottom:1px solid var(--line); }
+  .logo{ font-family:var(--mono); font-weight:700; font-size:15px; letter-spacing:0.5px; display:flex; align-items:center; gap:10px;}
+  .logo .dot{ width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.3;} }
+  .navlinks{ display:flex; gap:36px; font-family:var(--mono); font-size:13px; color:var(--text-dim); }
+  .navlinks a{ position:relative; transition:color .2s; }
+  .navlinks a:hover{ color:var(--green); }
+  .navlinks a::after{ content:''; position:absolute; left:0; bottom:-4px; width:0; height:1px; background:var(--green); transition:width .25s; }
+  .navlinks a:hover::after{ width:100%; }
+  .nav-cta{
+    font-family:var(--mono); font-size:12px; padding:9px 16px; border:1px solid var(--green-dim);
+    border-radius:2px; color:var(--green); transition:all .2s;
+  }
+  .nav-cta:hover{ background:var(--green); color:#05070a; box-shadow:0 0 20px var(--green-dim); }
+ 
+  /* ---------- hero ---------- */
+  .hero{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:120px 5vw 60px;
+  }
+  .terminal{
+    font-family:var(--mono); font-size:13px; color:var(--green); background:rgba(10,15,19,0.7);
+    border:1px solid var(--line); border-radius:6px; padding:14px 20px; margin-bottom:36px;
+    min-height:22px; display:inline-flex; align-items:center; gap:2px;
+    box-shadow:0 0 30px rgba(57,255,138,0.06);
+  }
+  .terminal .prompt{ color:var(--text-dim); margin-right:8px; }
+  .caret{ display:inline-block; width:7px; height:15px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+ 
+  .glitch-wrap{ position:relative; }
+  h1.title{
+    font-family:var(--display); font-weight:700; font-size:clamp(42px, 8vw, 108px);
+    line-height:0.95; letter-spacing:-2px; text-transform:uppercase;
+    background:linear-gradient(180deg, #fff 0%, var(--green) 120%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    position:relative; opacity:0; transform:translateY(30px);
+  }
+  h1.title.in{ animation: rise .9s cubic-bezier(.16,1,.3,1) forwards; }
+  @keyframes rise{ to{ opacity:1; transform:translateY(0);} }
+  h1.title .glitch-layer{
+    position:absolute; inset:0; -webkit-background-clip:text; background-clip:text; color:transparent;
+    opacity:0; pointer-events:none;
+  }
+  h1.title:hover .g1{ animation: glitch1 .5s steps(2) infinite; opacity:1; background:linear-gradient(180deg,var(--cyan),var(--cyan)); -webkit-background-clip:text; background-clip:text; }
+  h1.title:hover .g2{ animation: glitch2 .5s steps(2) infinite; opacity:1; background:linear-gradient(180deg,var(--danger),var(--danger)); -webkit-background-clip:text; background-clip:text; }
+  @keyframes glitch1{ 0%{transform:translate(0,0);} 25%{transform:translate(-3px,1px);} 50%{transform:translate(3px,-1px);} 75%{transform:translate(-2px,-1px);} 100%{transform:translate(0,0);} }
+  @keyframes glitch2{ 0%{transform:translate(0,0);} 25%{transform:translate(3px,-1px);} 50%{transform:translate(-3px,1px);} 75%{transform:translate(2px,1px);} 100%{transform:translate(0,0);} }
+ 
+  .subtitle{
+    font-family:var(--body); color:var(--text-dim); font-size:clamp(14px,2vw,18px);
+    max-width:600px; margin:26px auto 40px; line-height:1.6; opacity:0; transform:translateY(20px);
+  }
+  .subtitle.in{ animation: rise .8s cubic-bezier(.16,1,.3,1) forwards .15s; }
+  .subtitle strong{ color:var(--text); font-weight:500;}
+ 
+  .cta-row{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; opacity:0; transform:translateY(20px); }
+  .cta-row.in{ animation: rise .8s cubic-bezier(.16,1,.3,1) forwards .3s; }
+  .btn{
+    font-family:var(--mono); font-size:13px; padding:15px 28px; border-radius:2px;
+    position:relative; overflow:hidden; transition:transform .25s;
+  }
+  .btn-primary{ background:var(--green); color:#05070a; font-weight:700; box-shadow:0 0 0 rgba(57,255,138,0); }
+  .btn-primary:hover{ box-shadow:0 0 40px rgba(57,255,138,0.45); transform:translateY(-2px); }
+  .btn-ghost{ border:1px solid rgba(255,255,255,0.15); color:var(--text); }
+  .btn-ghost:hover{ border-color:var(--cyan); color:var(--cyan); transform:translateY(-2px); }
+ 
+  .scroll-hint{ position:absolute; bottom:36px; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:11px; color:var(--text-dim); display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .scroll-hint .line{ width:1px; height:34px; background:linear-gradient(var(--green), transparent); animation:drop 1.6s infinite; }
+  @keyframes drop{ 0%{opacity:0; transform:scaleY(0); transform-origin:top;} 40%{opacity:1; transform:scaleY(1); transform-origin:top;} 100%{opacity:0; transform:scaleY(1); transform-origin:bottom;} }
+ 
+  /* ---------- section shared ---------- */
+  .wrap{ max-width:1180px; margin:0 auto; padding:140px 5vw; }
+  .eyebrow{ font-family:var(--mono); font-size:12px; color:var(--green); letter-spacing:2px; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+  .eyebrow::before{ content:''; width:24px; height:1px; background:var(--green); }
+  h2.h2{ font-family:var(--display); font-weight:600; font-size:clamp(28px,4vw,48px); letter-spacing:-1px; max-width:720px; margin-bottom:20px; }
+  .lead{ color:var(--text-dim); max-width:560px; font-size:16px; line-height:1.7; }
+ 
+  .reveal{ opacity:0; transform:translateY(36px); transition:opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+ 
+  /* ---------- how it works ---------- */
+  .flow{ margin-top:64px; display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  .flow-step{ background:var(--bg-panel); padding:32px 26px; transition:background .3s; }
+  .flow-step:hover{ background:var(--bg-panel-2); }
+  .flow-step .idx{ font-family:var(--mono); color:var(--green); font-size:12px; margin-bottom:18px; opacity:.8; }
+  .flow-step .cmd{ font-family:var(--mono); font-size:13px; color:var(--cyan); margin-bottom:10px; min-height:20px; }
+  .flow-step h3{ font-family:var(--display); font-size:17px; margin-bottom:10px; }
+  .flow-step p{ color:var(--text-dim); font-size:13.5px; line-height:1.6; }
+  @media(max-width:860px){ .flow{ grid-template-columns:1fr; } }
+ 
+  /* ---------- features ---------- */
+  .grid-features{ margin-top:64px; display:grid; grid-template-columns:repeat(3,1fr); gap:20px; perspective:1200px; }
+  @media(max-width:900px){ .grid-features{ grid-template-columns:1fr 1fr; } }
+  @media(max-width:600px){ .grid-features{ grid-template-columns:1fr; } }
+  .fcard{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:6px; padding:30px 26px;
+    transition:border-color .3s, transform .1s; transform-style:preserve-3d; position:relative; overflow:hidden;
+  }
+  .fcard::before{
+    content:''; position:absolute; inset:0; opacity:0; transition:opacity .4s;
+    background:radial-gradient(400px circle at var(--mx,50%) var(--my,50%), rgba(57,255,138,0.08), transparent 60%);
+  }
+  .fcard:hover::before{ opacity:1; }
+  .fcard:hover{ border-color:var(--green-dim); }
+  .fcard .ico{ font-family:var(--mono); font-size:22px; color:var(--green); margin-bottom:20px; display:inline-block; }
+  .fcard h3{ font-family:var(--display); font-size:18px; margin-bottom:10px; font-weight:600; }
+  .fcard p{ color:var(--text-dim); font-size:14px; line-height:1.65; }
+  .fcard .tag{ position:absolute; top:24px; right:24px; font-family:var(--mono); font-size:10px; color:var(--text-dim); border:1px solid var(--line); padding:3px 8px; border-radius:20px; }
+ 
+  /* ---------- demo ---------- */
+  .demo{ margin-top:60px; border:1px solid var(--line); border-radius:8px; background:var(--bg-panel); overflow:hidden; box-shadow:0 40px 100px rgba(0,0,0,0.5); }
+  .demo-bar{ display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--line); background:var(--bg-panel-2); }
+  .demo-bar span{ width:10px; height:10px; border-radius:50%; background:#333; }
+  .demo-bar .path{ margin-left:14px; font-family:var(--mono); font-size:12px; color:var(--text-dim); }
+  .demo-body{ padding:28px; font-family:var(--mono); font-size:13.5px; line-height:2; min-height:220px; }
+  .demo-body .u{ color:var(--cyan); }
+  .demo-body .a{ color:var(--text); }
+  .demo-body .sys{ color:var(--text-dim); }
+  .demo-body .k{ color:var(--green); }
+ 
+  /* ---------- final cta ---------- */
+  .final{ text-align:center; padding-bottom:180px; }
+  .repo-input{
+    max-width:560px; margin:44px auto 0; display:flex; align-items:center; gap:10px;
+    border:1px solid var(--line); border-radius:4px; padding:6px; background:var(--bg-panel);
+    transition:border-color .3s, box-shadow .3s;
+  }
+  .repo-input:focus-within{ border-color:var(--green); box-shadow:0 0 30px rgba(57,255,138,0.12); }
+  .repo-input input{
+    flex:1; background:transparent; border:none; outline:none; color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:10px 12px;
+  }
+  .repo-input input::placeholder{ color:var(--text-dim); }
+  .repo-input button{
+    background:var(--green); color:#05070a; border:none; font-family:var(--mono); font-weight:700;
+    font-size:13px; padding:12px 22px; border-radius:2px; cursor:none; transition:box-shadow .2s;
+  }
+  .repo-input button:hover{ box-shadow:0 0 24px rgba(57,255,138,0.4); }
+ 
+  footer{ border-top:1px solid var(--line); padding:34px 5vw; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:12px; color:var(--text-dim); position:relative; z-index:2; }
+
+  /* ============================================================
+   ANALYSIS DASHBOARD
+   ============================================================ */
+
+#analysis-result {
+  width: min(1100px, 92vw);
+  margin: 40px auto 0;
+}
+
+.analysis-dashboard {
+  display: grid;
+  gap: 20px;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.analysis-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.analysis-repo {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.analysis-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 7px;
+}
+
+.status-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 14px;
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+.status-badge.warning {
+  color: #ffd166;
+  border-color: rgba(255,209,102,.5);
+}
+
+.status-badge.fail {
+  color: var(--danger);
+  border-color: rgba(255,59,107,.5);
+}
+
+.analysis-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.stat-card .stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+
+.stat-card .stat-value {
+  font-family: var(--display);
+  font-size: 25px;
+  font-weight: 600;
+}
+
+.stat-card .stat-value.good {
+  color: var(--green);
+}
+
+.stat-card .stat-value.warn {
+  color: #ffd166;
+}
+
+.analysis-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.panel-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--green);
+  margin-bottom: 18px;
+}
+
+.report-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+  opacity: .9;
+  overflow-x: auto;
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #ffd166;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dashboard-button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 15px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.dashboard-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.history-section {
+  width: min(1100px, 92vw);
+  margin: 70px auto 0;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  transition: border-color .2s, transform .2s;
+}
+
+.history-item:hover {
+  border-color: var(--green-dim);
+  transform: translateY(-2px);
+}
+
+.history-number {
+  font-family: var(--mono);
+  color: var(--green);
+  font-size: 12px;
+}
+
+.history-main {
+  min-width: 0;
+}
+
+.history-status {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.history-date {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-top: 5px;
+}
+
+.history-evidence {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.history-view-button {
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  background: rgba(74, 222, 128, 0.08);
+  color: #86efac;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-view-button:hover {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.5);
+  transform: translateY(-1px);
+}
+
+.history-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-dim);
+  border: 1px dashed var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.dashboard-section {
+    width: min(1180px, 92%);
+    margin: 80px auto;
+}
+
+.section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.section-kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #86efac;
+    margin-bottom: 8px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.section-header p {
+    color: var(--text-dim);
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+}
+
+.dashboard-stat-card {
+    padding: 22px;
+    border: 1px solid rgba(74, 222, 128, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    backdrop-filter: blur(10px);
+}
+
+.dashboard-stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+}
+
+.dashboard-stat-value {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.dashboard-stat-value.good {
+    color: #86efac;
+}
+
+.dashboard-stat-value.warn {
+    color: #facc15;
+}
+
+.grounding-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.grounding-bars {
+    display: grid;
+    gap: 18px;
+}
+
+.grounding-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 35px;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+}
+
+.grounding-bar {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.08);
+}
+
+.grounding-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: #86efac;
+    transition: width 0.5s ease;
+}
+
+.system-status {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.system-status-indicator {
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: #86efac;
+    box-shadow: 0 0 14px rgba(134, 239, 172, 0.7);
+}
+
+.system-status strong {
+    font-size: 15px;
+}
+
+.system-status p {
+    margin-top: 8px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    font-size: 13px;
+}
+.insights-section {
+    margin-top: 22px;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.insight-card {
+    position: relative;
+    padding: 20px;
+    border: 1px solid rgba(74, 222, 128, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    overflow: hidden;
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.insight-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.insight-score {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 700;
+}
+
+.insight-score span {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.insight-status {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    background: rgba(255,255,255,0.06);
+}
+
+.insight-status.good {
+    color: #86efac;
+}
+
+.insight-status.warning {
+    color: #facc15;
+}
+
+.insight-status.attention {
+    color: #f87171;
+}
+
+.insight-summary {
+    margin-top: 14px;
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.insight-loading {
+    grid-column: 1 / -1;
+    padding: 30px;
+    text-align: center;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+    .insights-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .insights-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .insights-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .dashboard-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grounding-overview {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .section-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media(max-width:800px) {
+  .analysis-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-item {
+    grid-template-columns: 50px 1fr;
+  }
+
+  .history-evidence {
+    grid-column: 2;
+  }
+}
+
+@media(max-width:500px) {
+  .analysis-stats {
+    grid-template-columns: 1fr;
+  }
+}
+/* ============================================================
+   AUTHENTICATION UI
+   ============================================================ */
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(57,255,138,0.08),
+      transparent 42%
+    ),
+    rgba(5,7,10,0.96);
+  backdrop-filter: blur(14px);
+}
+
+.auth-overlay.hidden {
+  display: none;
+}
+
+.auth-card {
+  width: min(440px, 100%);
+  padding: 38px;
+  background: rgba(10,15,19,0.94);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow:
+    0 30px 100px rgba(0,0,0,0.65),
+    0 0 50px rgba(57,255,138,0.05);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.auth-brand .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+}
+
+.auth-title {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: -6px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 13px 14px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.auth-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 20px rgba(57,255,138,0.08);
+}
+
+.auth-button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 2px;
+  background: var(--green);
+  color: #05070a;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow .2s, transform .2s;
+}
+
+.auth-button:hover {
+  box-shadow: 0 0 30px rgba(57,255,138,0.35);
+  transform: translateY(-1px);
+}
+
+.auth-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  transform: none;
+}
+
+.auth-switch {
+  margin-top: 22px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.auth-switch button {
+  border: none;
+  background: none;
+  color: var(--green);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.auth-error {
+  display: none;
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255,59,107,0.35);
+  background: rgba(255,59,107,0.06);
+  color: #ff8baa;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-error.show {
+  display: block;
+}
+
+.auth-user {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.auth-user.visible {
+  display: flex;
+}
+
+.auth-user-name {
+  color: var(--green);
+}
+
+.auth-logout {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.auth-logout:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
+
+  .auth-title {
+    font-size: 27px;
+  }
+}
+</style>
+</head>
+
+<body>
+ <!-- ============================================================
+     AUTHENTICATION OVERLAY
+     ============================================================ -->
+
+<div class="auth-overlay" id="authOverlay">
+
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <span class="dot"></span>
+      REPOMIND_AI
+    </div>
+
+    <!-- LOGIN -->
+
+    <div id="loginView">
+
+      <div class="auth-title">
+        Welcome back.
+      </div>
+
+      <div class="auth-subtitle">
+        Sign in to analyze repositories and access your RepoMind workspace.
+      </div>
+
+      <div class="auth-error" id="loginError"></div>
+
+      <form class="auth-form" id="loginForm">
+
+        <label class="auth-label" for="loginEmail">
+          Email
+        </label>
+
+        <input
+          class="auth-input"
+          id="loginEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+        <label class="auth-label" for="loginPassword">
+          Password
+        </label>
+
+        <input
+          class="auth-input"
+          id="loginPassword"
+          type="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        >
+
+        <button
+          class="auth-button"
+          id="loginButton"
+          type="submit"
+        >
+          Sign in →
+        </button>
+
+      </form>
+
+      <div class="auth-switch">
+        Don't have an account?
+        <button type="button" id="showRegister">
+          Create one
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- REGISTER -->
+
+    <div id="registerView" style="display:none;">
+
+      <div class="auth-title">
+        Create account.
+      </div>
+
+      <div class="auth-subtitle">
+        Create your RepoMind account to start analyzing repositories.
+      </div>
+
+      <div class="auth-error" id="registerError"></div>
+
+      <form class="auth-form" id="registerForm">
+
+        <label class="auth-label" for="registerUsername">
+          Username
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerUsername"
+          type="text"
+          placeholder="your username"
+          autocomplete="username"
+          required
+        >
+
+        <label class="auth-label" for="registerEmail">
+          Email
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+        <label class="auth-label" for="registerPassword">
+          Password
+        </label>
+
+        <input
+          class="auth-input"
+          id="registerPassword"
+          type="password"
+          placeholder="Create a password"
+          autocomplete="new-password"
+          required
+        >
+
+        <button
+          class="auth-button"
+          id="registerButton"
+          type="submit"
+        >
+          Create account →
+        </button>
+
+      </form>
+
+      <div class="auth-switch">
+        Already have an account?
+        <button type="button" id="showLogin">
+          Sign in
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+<div class="cursor-dot"></div>
+<div class="cursor-ring"></div>
+<canvas id="graph"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+ 
+<nav id="nav">
+  <div style="display:flex;align-items:center;gap:14px;">
+
+  <div class="auth-user" id="authUser">
+    <span>
+      user:
+      <span class="auth-user-name" id="authUsername"></span>
+    </span>
+
+    <button
+      class="auth-logout"
+      id="logoutButton"
+      type="button"
+    >
+      Logout
+    </button>
+  </div>
+
+  <a class="nav-cta" href="#start">
+    Analyze a repo →
+  </a>
+
+</div>
+  <div class="navlinks">
+    <a href="#how">how it works</a>
+    <a href="#features">modules</a>
+    <a href="#demo">demo</a>
+    <a href="#history">history</a>
+    <a href="#dashboard">Dashboard</a>
+
+  </div>
+  <a class="nav-cta" href="#start">Analyze a repo →</a>
+</nav>
+ 
+<section class="hero">
+  <div class="terminal" id="terminalLine"><span class="prompt">$</span><span id="typed"></span><span class="caret"></span></div>
+  <div class="glitch-wrap">
+    <h1 class="title" id="heroTitle">
+      RepoMind AI
+      <span class="glitch-layer g1" aria-hidden="true">RepoMind AI</span>
+      <span class="glitch-layer g2" aria-hidden="true">RepoMind AI</span>
+    </h1>
+  </div>
+  <p class="subtitle" id="heroSub">Paste any GitHub URL. RepoMind reads the whole repository, builds a live dependency graph, and lets you <strong>talk to your codebase</strong> like it's a teammate who already read every file.</p>
+  <div class="cta-row" id="heroCta">
+    <a class="btn btn-primary" href="#start">Analyze a repository</a>
+    <a class="btn btn-ghost" href="#demo">Watch it think →</a>
+  </div>
+  <div class="scroll-hint"><span>SCROLL</span><span class="line"></span></div>
+</section>
+ 
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow reveal">Process</div>
+    <h2 class="h2 reveal">Four commands stand between you and a codebase you actually understand.</h2>
+    <div class="flow reveal">
+      <div class="flow-step">
+        <div class="idx">STEP 01</div>
+        <div class="cmd">$ repomind clone &lt;url&gt;</div>
+        <h3>Drop in a URL</h3>
+        <p>Paste any public GitHub repository. No setup, no cloning it yourself, no config files.</p>
+      </div>
+      <div class="flow-step">
+        <div class="idx">STEP 02</div>
+        <div class="cmd">> parsing file tree...</div>
+        <h3>It reads everything</h3>
+        <p>Every file, folder, and dependency gets pulled into a live graph — not fragments, the whole picture.</p>
+      </div>
+      <div class="flow-step">
+        <div class="idx">STEP 03</div>
+        <div class="cmd">> model: ready</div>
+        <h3>A mental model forms</h3>
+        <p>Architecture, entry points, and tech stack get mapped automatically in seconds.</p>
+      </div>
+      <div class="flow-step">
+        <div class="idx">STEP 04</div>
+        <div class="cmd">$ repomind chat</div>
+        <h3>You ask, it answers</h3>
+        <p>Chat with the repo in plain language — "where's auth handled?" gets a real, sourced answer.</p>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<section id="features">
+  <div class="wrap">
+    <div class="eyebrow reveal">Modules</div>
+    <h2 class="h2 reveal">Everything you'd want from a senior engineer on their first day, minus the days.</h2>
+    <p class="lead reveal">Six modules working off the same live graph of your repository.</p>
+    <div class="grid-features">
+      <div class="fcard reveal"><div class="tag">core</div><span class="ico">&gt;_</span><h3>Repo Chat</h3><p>Ask questions in natural language and get answers grounded in the actual source — not generic guesses.</p></div>
+      <div class="fcard reveal"><div class="tag">visual</div><span class="ico">◇</span><h3>Architecture Maps</h3><p>Auto-generated diagrams of how modules, services, and files actually connect to each other.</p></div>
+      <div class="fcard reveal"><div class="tag">scan</div><span class="ico">▲</span><h3>Tech Stack Detection</h3><p>Instantly see every framework, library, and tool the project depends on — no manual digging.</p></div>
+      <div class="fcard reveal"><div class="tag">safety</div><span class="ico">◈</span><h3>Risk & Security Scan</h3><p>Flags fragile patterns, outdated dependencies, and likely trouble spots before you touch a line.</p></div>
+      <div class="fcard reveal"><div class="tag">guide</div><span class="ico">▹</span><h3>Onboarding Guide</h3><p>A generated walkthrough of entry points and setup steps, written for whoever joins next.</p></div>
+      <div class="fcard reveal"><div class="tag">cli</div><span class="ico">$</span><h3>Command Generator</h3><p>Turns "how do I run this" into copy-paste-ready terminal commands for the exact project.</p></div>
+    </div>
+  </div>
+</section>
+ 
+<section id="demo">
+  <div class="wrap">
+    <div class="eyebrow reveal">Live example</div>
+    <h2 class="h2 reveal">Watch it think.</h2>
+    <div class="demo reveal">
+      <div class="demo-bar"><span></span><span></span><span></span><div class="path">repomind — chat — main</div></div>
+      <div class="demo-body" id="demoBody"></div>
+    </div>
+  </div>
+</section>
+ 
+<section class="final" id="start">
+  <div class="eyebrow reveal" style="justify-content:center;">Get started</div>
+  <h2 class="h2 reveal" style="margin:0 auto 10px;text-align:center;">Point it at your repo.</h2>
+  <p class="lead reveal" style="margin:0 auto;text-align:center;">Free to try on any public GitHub repository — no install required.</p>
+  <div class="repo-input reveal">
+    <input type="text" placeholder="github.com/you/your-repo">
+    <button>Analyze →</button>
+  </div>
+</section>
+<section id="dashboard" class="dashboard-section">
+
+    <div class="section-header">
+        <div>
+            <div class="section-kicker">SYSTEM INTELLIGENCE</div>
+            <h2>Analysis Dashboard</h2>
+            <p>
+                Repository analysis statistics generated by RepoMind-AI.
+            </p>
+        </div>
+
+        <button
+            id="refresh-dashboard"
+            class="dashboard-button"
+        >
+            Refresh
+        </button>
+    </div>
+
+    <div id="dashboard-stats" class="dashboard-stats">
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                TOTAL ANALYSES
+            </div>
+
+            <div
+                id="stat-total-analyses"
+                class="dashboard-stat-value"
+            >
+                —
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                REPOSITORIES
+            </div>
+
+            <div
+                id="stat-repositories"
+                class="dashboard-stat-value"
+            >
+                —
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                GROUNDED
+            </div>
+
+            <div
+                id="stat-grounded"
+                class="dashboard-stat-value good"
+            >
+                —
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                EVIDENCE
+            </div>
+
+            <div
+                id="stat-evidence"
+                class="dashboard-stat-value"
+            >
+                —
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                WARNINGS
+            </div>
+
+            <div
+                id="stat-warnings"
+                class="dashboard-stat-value warn"
+            >
+                —
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card">
+            <div class="dashboard-stat-label">
+                FAILED
+            </div>
+
+            <div
+                id="stat-failed"
+                class="dashboard-stat-value"
+            >
+                —
+            </div>
+        </div>
+
+    </div>
+    <div class="insights-section">
+
+    <div class="panel-title">
+        REPOSITORY INTELLIGENCE
+    </div>
+
+    <div
+        id="repository-insights"
+        class="insights-grid"
+    >
+        <div class="insight-loading">
+            Loading repository intelligence...
+        </div>
+    </div>
+
+</div>
+
+    <div class="grounding-overview">
+
+        <div class="analysis-panel">
+            <div class="panel-title">
+                GROUNDING OVERVIEW
+            </div>
+
+            <div class="grounding-bars">
+
+                <div class="grounding-row">
+                    <span>PASS</span>
+
+                    <div class="grounding-bar">
+                        <div
+                            id="grounding-pass-bar"
+                            class="grounding-fill"
+                        ></div>
+                    </div>
+
+                    <strong id="grounding-pass-count">
+                        0
+                    </strong>
+                </div>
+
+                <div class="grounding-row">
+                    <span>WARNING</span>
+
+                    <div class="grounding-bar">
+                        <div
+                            id="grounding-warning-bar"
+                            class="grounding-fill"
+                        ></div>
+                    </div>
+
+                    <strong id="grounding-warning-count">
+                        0
+                    </strong>
+                </div>
+
+                <div class="grounding-row">
+                    <span>FAIL</span>
+
+                    <div class="grounding-bar">
+                        <div
+                            id="grounding-fail-bar"
+                            class="grounding-fill"
+                        ></div>
+                    </div>
+
+                    <strong id="grounding-fail-count">
+                        0
+                    </strong>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="analysis-panel">
+
+            <div class="panel-title">
+                REPO MIND STATUS
+            </div>
+
+            <div class="system-status">
+
+                <div class="system-status-indicator"></div>
+
+                <div>
+                    <strong>Analysis Engine Online</strong>
+
+                    <p>
+                        GitHub acquisition, multi-agent analysis,
+                        grounding validation and report persistence
+                        are available.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+<section class="history-section" id="history">
+
+  <div class="eyebrow reveal">Database</div>
+
+  <h2 class="h2 reveal">
+    Analysis history.
+  </h2>
+
+  <p class="lead reveal">
+    Previously analyzed repositories and their stored results.
+  </p>
+
+  <div id="history-list" class="history-list reveal">
+    <div class="history-empty">
+      Loading analysis history...
+    </div>
+  </div>
+
+</section>
+ 
+<footer>
+  <span>© 2026 REPOMIND_AI</span>
+  <span>built with a live dependency graph, not a template</span>
+</footer>
+ 
+<script>
+/* ---------------- custom cursor ---------------- */
+const dot = document.querySelector('.cursor-dot');
+const ring = document.querySelector('.cursor-ring');
+let mx=innerWidth/2,my=innerHeight/2, rx=mx, ry=my;
+window.addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; dot.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`; });
+(function loop(){ rx += (mx-rx)*0.18; ry += (my-ry)*0.18; ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`; requestAnimationFrame(loop); })();
+document.querySelectorAll('a,button,input').forEach(el=>{
+  el.addEventListener('mouseenter', ()=>ring.classList.add('active'));
+  el.addEventListener('mouseleave', ()=>ring.classList.remove('active'));
+});
+ 
+/* ---------------- nav scroll state ---------------- */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', ()=>{ nav.classList.toggle('scrolled', scrollY>10); });
+ 
+/* ---------------- terminal typing ---------------- */
+const typedEl = document.getElementById('typed');
+const bootLine = "repomind clone https://github.com/you/your-repo --deep";
+let ti=0;
+function typeBoot(){
+  if(ti<=bootLine.length){ typedEl.textContent = bootLine.slice(0,ti); ti++; setTimeout(typeBoot, 32); }
+  else{
+    setTimeout(()=>{
+      document.getElementById('heroTitle').classList.add('in');
+      document.getElementById('heroSub').classList.add('in');
+      document.getElementById('heroCta').classList.add('in');
+    }, 250);
+  }
+}
+typeBoot();
+ 
+/* ---------------- demo chat typing ---------------- */
+const demoBody = document.getElementById('demoBody');
+const demoLines = [
+  {c:'sys', t:'$ repomind chat "where is authentication handled?"'},
+  {c:'a', t:'→ Auth lives in <span class="k">src/middleware/auth.ts</span>. It verifies JWTs on every request and hands the decoded user to <span class="k">controllers/*</span> via context.'},
+  {c:'u', t:'$ user: does it support OAuth?'},
+  {c:'a', t:'→ Yes — <span class="k">providers/oauth.ts</span> wires Google + GitHub via passport strategies, registered in <span class="k">app.ts:42</span>.'}
+];
+let demoStarted=false;
+function typeDemo(){
+  let li=0;
+  function nextLine(){
+    if(li>=demoLines.length) return;
+    const {c,t}=demoLines[li];
+    const p=document.createElement('div');
+    p.className=c;
+    demoBody.appendChild(p);
+    let i=0;
+    const plain = t.replace(/<[^>]+>/g,'');
+    // type html-safe by revealing full markup progressively via textContent for plain, then swap
+    function step(){
+      if(i<=t.length){ p.innerHTML = t.slice(0,i); i+= 3; setTimeout(step, 12); }
+      else{ p.innerHTML = t; li++; setTimeout(nextLine, 380); }
+    }
+    step();
+  }
+  nextLine();
+}
+ 
+/* ---------------- scroll reveal ---------------- */
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach((e,i)=>{
+    if(e.isIntersecting){
+      setTimeout(()=> e.target.classList.add('in'), i*60);
+      io.unobserve(e.target);
+      if(e.target.closest('#demo') && !demoStarted){ demoStarted=true; typeDemo(); }
+    }
+  });
+}, {threshold:0.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+ 
+/* ---------------- 3D tilt on feature cards ---------------- */
+document.querySelectorAll('.fcard').forEach(card=>{
+  card.addEventListener('mousemove', e=>{
+    const r = card.getBoundingClientRect();
+    const px = (e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
+    card.style.setProperty('--mx', `${px*100}%`);
+    card.style.setProperty('--my', `${py*100}%`);
+    card.style.transform = `rotateY(${(px-0.5)*8}deg) rotateX(${(0.5-py)*8}deg) translateZ(0)`;
+  });
+  card.addEventListener('mouseleave', ()=>{ card.style.transform='rotateY(0) rotateX(0)'; });
+});
+ 
+/* ---------------- background neural repo-graph canvas ---------------- */
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+let W,H;
+function resize(){ W=canvas.width=innerWidth; H=canvas.height=innerHeight; }
+resize(); window.addEventListener('resize', resize);
+ 
+const NODE_COUNT = Math.min(70, Math.floor((innerWidth*innerHeight)/22000));
+const nodes = Array.from({length:NODE_COUNT}, ()=>({
+  x: Math.random()*W, y: Math.random()*H,
+  vx:(Math.random()-0.5)*0.25, vy:(Math.random()-0.5)*0.25,
+  r: Math.random()*1.6+1
+}));
+const MAXD = 150;
+let mouse = {x:-9999,y:-9999};
+window.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
+window.addEventListener('mouseleave', ()=>{ mouse.x=-9999; mouse.y=-9999; });
+ 
+// traveling data-packets along edges
+let packets = [];
+function spawnPacket(a,b){
+  packets.push({a,b,t:0,speed:0.006+Math.random()*0.01});
+}
+ 
+function step(){
+  ctx.clearRect(0,0,W,H);
+ 
+  // update nodes
+  nodes.forEach(n=>{
+    n.x+=n.vx; n.y+=n.vy;
+    if(n.x<0||n.x>W) n.vx*=-1;
+    if(n.y<0||n.y>H) n.vy*=-1;
+    const dx=mouse.x-n.x, dy=mouse.y-n.y, d=Math.hypot(dx,dy);
+    if(d<120){ n.x -= dx/d*0.6; n.y -= dy/d*0.6; }
+  });
+ 
+  // edges
+  ctx.lineWidth=1;
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
+      const d=Math.hypot(dx,dy);
+      if(d<MAXD){
+        const alpha = (1-d/MAXD)*0.18;
+        ctx.strokeStyle = `rgba(57,255,138,${alpha})`;
+        ctx.beginPath(); ctx.moveTo(nodes[i].x,nodes[i].y); ctx.lineTo(nodes[j].x,nodes[j].y); ctx.stroke();
+        if(Math.random()<0.0009) spawnPacket(nodes[i], nodes[j]);
+      }
+    }
+  }
+ 
+  // nodes dots
+  nodes.forEach(n=>{
+    ctx.beginPath();
+    ctx.fillStyle='rgba(57,255,138,0.55)';
+    ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fill();
+  });
+ 
+  // packets
+  packets = packets.filter(p=>p.t<=1);
+  packets.forEach(p=>{
+    p.t += p.speed;
+    const x = p.a.x + (p.b.x-p.a.x)*p.t;
+    const y = p.a.y + (p.b.y-p.a.y)*p.t;
+    ctx.beginPath();
+    ctx.fillStyle = '#38f0ff';
+    ctx.shadowColor='#38f0ff'; ctx.shadowBlur=8;
+    ctx.arc(x,y,2.2,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur=0;
+  });
+ 
+  requestAnimationFrame(step);
+}
+step();
+
+// ============================================================
+// RepoMind-AI Backend + Database Integration
+// ============================================================
+
+const API_BASE_URL = "http://127.0.0.1:8000";
+// ============================================================
+// RepoMind-AI Authentication
+// ============================================================
+
+const AUTH_TOKEN_KEY = "repomind_access_token";
+const AUTH_USER_KEY = "repomind_user";
+
+const authOverlay = document.getElementById("authOverlay");
+
+const loginView = document.getElementById("loginView");
+const registerView = document.getElementById("registerView");
+
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+
+const loginButton = document.getElementById("loginButton");
+const registerButton = document.getElementById("registerButton");
+
+const loginError = document.getElementById("loginError");
+const registerError = document.getElementById("registerError");
+
+const showRegisterButton =
+  document.getElementById("showRegister");
+
+const showLoginButton =
+  document.getElementById("showLogin");
+
+const authUser =
+  document.getElementById("authUser");
+
+const authUsername =
+  document.getElementById("authUsername");
+
+const logoutButton =
+  document.getElementById("logoutButton");
+
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+
+function saveAuthSession(token, user) {
+  localStorage.setItem(
+    AUTH_TOKEN_KEY,
+    token
+  );
+
+  localStorage.setItem(
+    AUTH_USER_KEY,
+    JSON.stringify(user)
+  );
+}
+
+
+function clearAuthSession() {
+  localStorage.removeItem(
+    AUTH_TOKEN_KEY
+  );
+
+  localStorage.removeItem(
+    AUTH_USER_KEY
+  );
+}
+
+
+function getStoredUser() {
+  const rawUser =
+    localStorage.getItem(AUTH_USER_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    return null;
+  }
+}
+
+
+function showAuthError(element, message) {
+  element.textContent = message;
+  element.classList.add("show");
+}
+
+
+function clearAuthError(element) {
+  element.textContent = "";
+  element.classList.remove("show");
+}
+
+
+function showLoginScreen() {
+  loginView.style.display = "block";
+  registerView.style.display = "none";
+
+  clearAuthError(loginError);
+  clearAuthError(registerError);
+
+  authOverlay.classList.remove("hidden");
+}
+
+
+function showRegisterScreen() {
+  loginView.style.display = "none";
+  registerView.style.display = "block";
+
+  clearAuthError(loginError);
+  clearAuthError(registerError);
+
+  authOverlay.classList.remove("hidden");
+}
+
+
+function showAuthenticatedUI(user) {
+  authOverlay.classList.add("hidden");
+
+  if (user) {
+    authUsername.textContent =
+      user.username || user.email || "user";
+
+    authUser.classList.add("visible");
+  }
+}
+
+
+function logout() {
+  clearAuthSession();
+
+  authUser.classList.remove("visible");
+
+  loginForm.reset();
+  registerForm.reset();
+
+  showLoginScreen();
+}
+
+
+async function verifyExistingSession() {
+
+  const token = getAuthToken();
+
+  if (!token) {
+    showLoginScreen();
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE_URL}/auth/me`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Session expired.");
+    }
+
+    const user = await response.json();
+
+    localStorage.setItem(
+      AUTH_USER_KEY,
+      JSON.stringify(user)
+    );
+
+    showAuthenticatedUI(user);
+
+  } catch (error) {
+
+    console.warn(
+      "RepoMind authentication session invalid:",
+      error
+    );
+
+    clearAuthSession();
+    showLoginScreen();
+  }
+}
+
+
+// ------------------------------------------------------------
+// Switch between Login and Register
+// ------------------------------------------------------------
+
+showRegisterButton.addEventListener(
+  "click",
+  showRegisterScreen
+);
+
+showLoginButton.addEventListener(
+  "click",
+  showLoginScreen
+);
+
+
+// ------------------------------------------------------------
+// Login
+// ------------------------------------------------------------
+
+loginForm.addEventListener(
+  "submit",
+  async (event) => {
+
+    event.preventDefault();
+
+    clearAuthError(loginError);
+
+    const email =
+      document.getElementById("loginEmail")
+        .value
+        .trim();
+
+    const password =
+      document.getElementById("loginPassword")
+        .value;
+
+    loginButton.disabled = true;
+    loginButton.textContent = "Signing in...";
+
+    try {
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/login`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.detail ||
+          "Login failed."
+        );
+      }
+
+      saveAuthSession(
+        data.access_token,
+        data.user
+      );
+
+      showAuthenticatedUI(
+        data.user
+      );
+
+    } catch (error) {
+
+      console.error(
+        "RepoMind login error:",
+        error
+      );
+
+      showAuthError(
+        loginError,
+        error.message ||
+        "Unable to sign in."
+      );
+
+    } finally {
+
+      loginButton.disabled = false;
+      loginButton.textContent = "Sign in →";
+    }
+  }
+);
+
+
+// ------------------------------------------------------------
+// Register
+// ------------------------------------------------------------
+
+registerForm.addEventListener(
+  "submit",
+  async (event) => {
+
+    event.preventDefault();
+
+    clearAuthError(registerError);
+
+    const username =
+      document.getElementById(
+        "registerUsername"
+      ).value.trim();
+
+    const email =
+      document.getElementById(
+        "registerEmail"
+      ).value.trim();
+
+    const password =
+      document.getElementById(
+        "registerPassword"
+      ).value;
+
+    registerButton.disabled = true;
+    registerButton.textContent =
+      "Creating account...";
+
+    try {
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/register`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            username: username,
+            email: email,
+            password: password
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.detail ||
+          "Registration failed."
+        );
+      }
+
+      /*
+       * Registration creates the account.
+       * Now switch to login and let the user
+       * authenticate normally.
+       */
+
+      loginView.style.display = "block";
+      registerView.style.display = "none";
+
+      document.getElementById(
+        "loginEmail"
+      ).value = email;
+
+      document.getElementById(
+        "loginPassword"
+      ).value = "";
+
+      clearAuthError(registerError);
+
+      showAuthError(
+        loginError,
+        "Account created successfully. Please sign in."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "RepoMind registration error:",
+        error
+      );
+
+      showAuthError(
+        registerError,
+        error.message ||
+        "Unable to create account."
+      );
+
+    } finally {
+
+      registerButton.disabled = false;
+      registerButton.textContent =
+        "Create account →";
+    }
+  }
+);
+
+
+// ------------------------------------------------------------
+// Logout
+// ------------------------------------------------------------
+
+logoutButton.addEventListener(
+  "click",
+  logout
+);
+
+
+// ------------------------------------------------------------
+// Check authentication when page loads
+// ------------------------------------------------------------
+
+verifyExistingSession();
+
+const repoInput = document.querySelector(".repo-input input");
+const analyzeButton = document.querySelector(".repo-input button");
+
+
+// ============================================================
+// RESULT CONTAINER
+// ============================================================
+
+const analysisResult = document.createElement("div");
+
+analysisResult.id = "analysis-result";
+
+document.querySelector(".repo-input").insertAdjacentElement(
+  "afterend",
+  analysisResult
+);
+
+
+// ============================================================
+// HISTORY CONTAINER
+// ============================================================
+
+const historyList = document.getElementById("history-list");
+
+
+// ============================================================
+// ANALYZE REPOSITORY
+// ============================================================
+
+analyzeButton.addEventListener("click", analyzeRepository);
+
+
+// Allow Enter key
+repoInput.addEventListener("keydown", (event) => {
+
+  if (event.key === "Enter") {
+    analyzeRepository();
+  }
+
+});
+
+
+async function analyzeRepository() {
+
+  const repository = repoInput.value.trim();
+
+
+  // ----------------------------------------------------------
+  // VALIDATION
+  // ----------------------------------------------------------
+
+  if (!repository) {
+
+    showAnalysisError(
+      "Please enter a GitHub repository."
+    );
+
+    repoInput.focus();
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // LOADING STATE
+  // ----------------------------------------------------------
+
+  setAnalyzeLoading(true);
+
+  analysisResult.style.display = "block";
+
+  analysisResult.innerHTML = `
+
+    <div class="analysis-panel">
+
+      <div class="panel-title">
+        RepoMind AI
+      </div>
+
+      <div style="
+        font-size:20px;
+        font-weight:600;
+      ">
+        Analyzing repository...
+      </div>
+
+      <p style="
+        margin-top:10px;
+        color:var(--text-dim);
+        font-size:13px;
+        line-height:1.6;
+      ">
+        Repository acquisition, preprocessing, AI agents,
+        grounding validation and report generation are running.
+      </p>
+
+    </div>
+
+  `;
+
+
+  // ----------------------------------------------------------
+  // API REQUEST
+  // ----------------------------------------------------------
+
+  try {
+
+    const response = await fetch(`${API_BASE_URL}/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAuthToken()}`
+  },
+
+        body: JSON.stringify({
+          repository: repository
+        })
+      }
+    );
+
+
+    const data = await response.json();
+
+
+    // --------------------------------------------------------
+    // API ERROR
+    // --------------------------------------------------------
+
+    if (!response.ok) {
+
+  if (response.status === 401) {
+
+    clearAuthSession();
+    showLoginScreen();
+
+    throw new Error(
+      "Your session has expired. Please sign in again."
+    );
+  }
+
+  throw new Error(
+    data.detail ||
+    "Repository analysis failed."
+  );
+}
+
+
+    // --------------------------------------------------------
+    // DISPLAY RESULT
+    // --------------------------------------------------------
+
+    displayAnalysisResult(data);
+
+
+    // --------------------------------------------------------
+    // REFRESH HISTORY
+    // --------------------------------------------------------
+
+    await loadAnalysisHistory();
+
+
+  } catch (error) {
+
+    console.error(
+      "RepoMind AI error:",
+      error
+    );
+
+    showAnalysisError(
+      error.message ||
+      "Could not connect to the RepoMind-AI backend."
+    );
+
+  } finally {
+
+    setAnalyzeLoading(false);
+
+  }
+
+}
+
+
+// ============================================================
+// BUTTON LOADING STATE
+// ============================================================
+
+function setAnalyzeLoading(isLoading) {
+
+  analyzeButton.disabled = isLoading;
+
+  if (isLoading) {
+
+    analyzeButton.textContent = "Analyzing...";
+
+    analyzeButton.style.opacity = "0.6";
+
+    analyzeButton.style.cursor = "wait";
+
+  } else {
+
+    analyzeButton.textContent = "Analyze →";
+
+    analyzeButton.style.opacity = "1";
+
+    analyzeButton.style.cursor = "pointer";
+
+  }
+
+}
+
+
+// ============================================================
+// DISPLAY ANALYSIS RESULT
+// ============================================================
+
+function displayAnalysisResult(data) {
+
+  const repository = data.repository;
+  const analysis = data.analysis;
+
+  const groundingStatus =
+    analysis.grounding_status || "UNKNOWN";
+
+  const groundingClass =
+    groundingStatus === "PASS"
+      ? "good"
+      : groundingStatus === "WARNING"
+        ? "warn"
+        : "";
+
+
+  analysisResult.style.display = "block";
+
+
+    analysisResult.innerHTML = `
+    <div class="analysis-dashboard">
+
+
+      <!-- ================================================
+           HEADER
+           ================================================ -->
+
+      <div class="analysis-header">
+
+        <div>
+
+          <div class="analysis-label">
+            Analysis complete
+          </div>
+
+          <div class="analysis-repo">
+            ${escapeHtml(repository.full_name)}
+          </div>
+
+          <div class="analysis-id">
+            Analysis ID #${analysis.id}
+          </div>
+
+        </div>
+
+
+        <div class="status-badge ${getStatusClass(groundingStatus)}">
+
+          ${escapeHtml(groundingStatus)}
+
+        </div>
+
+      </div>
+
+
+      <!-- ================================================
+           STATISTICS
+           ================================================ -->
+
+      <div class="analysis-stats">
+
+
+        <div class="stat-card">
+
+          <div class="stat-label">
+            Status
+          </div>
+
+          <div class="stat-value good">
+            ${escapeHtml(analysis.status)}
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-label">
+            Grounding
+          </div>
+
+          <div class="stat-value ${groundingClass}">
+            ${escapeHtml(groundingStatus)}
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-label">
+            Evidence
+          </div>
+
+          <div class="stat-value">
+            ${Number(analysis.evidence_count || 0)}
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-label">
+            AI Grounding
+          </div>
+
+          <div class="stat-value">
+            ${escapeHtml(
+              analysis.ai_grounding_status || "UNKNOWN"
+            )}
+          </div>
+
+        </div>
+
+
+      </div>
+
+
+      <!-- ================================================
+           REPOSITORY INFORMATION
+           ================================================ -->
+
+      <div class="analysis-panel">
+
+        <div class="panel-title">
+          Repository
+        </div>
+
+        <div style="
+          display:grid;
+          gap:9px;
+          font-family:var(--mono);
+          font-size:12px;
+        ">
+
+          <div>
+            Name:
+            <strong>
+              ${escapeHtml(repository.name)}
+            </strong>
+          </div>
+
+          <div>
+            Branch:
+            <strong>
+              ${escapeHtml(repository.default_branch)}
+            </strong>
+          </div>
+
+          <div>
+            URL:
+            <strong>
+              ${escapeHtml(repository.url)}
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ================================================
+           REPORT
+           ================================================ -->
+
+      <div class="analysis-panel">
+
+        <div class="panel-title">
+          Repository Report
+        </div>
+
+        <pre class="report-content">${escapeHtml(
+          analysis.report
+        )}</pre>
+
+      </div>
+
+
+      <!-- ================================================
+           WARNINGS
+           ================================================ -->
+
+      ${
+        analysis.warnings &&
+        analysis.warnings.length
+          ? `
+
+            <div class="analysis-panel">
+
+              <div class="panel-title">
+                Warnings
+              </div>
+
+              <ul class="warning-list">
+
+                ${analysis.warnings
+                  .map(
+                    warning =>
+                      `<li>${escapeHtml(warning)}</li>`
+                  )
+                  .join("")}
+
+              </ul>
+
+            </div>
+
+          `
+          : ""
+      }
+
+
+      <!-- ================================================
+           ACTIONS
+           ================================================ -->
+
+      <div class="dashboard-actions">
+
+        <button
+          class="dashboard-button"
+          onclick="loadSingleAnalysis(${analysis.id})"
+        >
+          View saved analysis
+        </button>
+
+        <button
+          class="dashboard-button"
+          onclick="loadAnalysisHistory()"
+        >
+          Refresh history
+        </button>
+
+      </div>
+
+
+    </div>
+
+  `;
+
+
+  // Scroll to result
+  analysisResult.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+}
+
+
+// ============================================================
+// LOAD ALL ANALYSIS HISTORY
+// ============================================================
+
+async function loadAnalysisHistory() {
+
+  if (!historyList) {
+    return;
+  }
+
+
+  historyList.innerHTML = `
+
+    <div class="history-empty">
+      Loading analysis history...
+    </div>
+
+  `;
+
+
+  try {
+
+    const response = await fetch(
+  `${API_BASE_URL}/analyses`,
+  {
+    headers: {
+      "Authorization": `Bearer ${getAuthToken()}`
+    }
+  }
+);
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.detail ||
+        "Could not load analysis history."
+      );
+
+    }
+
+
+    renderAnalysisHistory(data);
+
+
+  } catch (error) {
+
+    console.error(
+      "History error:",
+      error
+    );
+
+
+    historyList.innerHTML = `
+
+      <div class="history-empty">
+
+        Could not load analysis history.
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+// ============================================================
+// RENDER HISTORY
+// ============================================================
+
+function renderAnalysisHistory(analyses) {
+
+  if (!analyses || analyses.length === 0) {
+
+    historyList.innerHTML = `
+
+      <div class="history-empty">
+
+        No repository analyses have been saved yet.
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  historyList.innerHTML = analyses
+    .map((analysis, index) => {
+
+      const date =
+        analysis.created_at
+          ? new Date(
+              analysis.created_at
+            ).toLocaleString()
+          : "Unknown date";
+
+
+      return `
+
+        <div class="history-item">
+
+          <div class="history-number">
+            #${escapeHtml(analysis.id)}
+          </div>
+
+
+          <div class="history-main">
+
+            <div class="history-status">
+
+              ${escapeHtml(
+                analysis.status
+              )}
+
+              ·
+
+              ${escapeHtml(
+                analysis.grounding_status
+              )}
+
+            </div>
+
+            <div class="history-date">
+              ${escapeHtml(date)}
+            </div>
+
+          </div>
+
+
+          <div class="history-evidence">
+
+            ${Number(
+              analysis.evidence_count || 0
+            )}
+
+            evidence
+
+            <br>
+
+            AI:
+            ${escapeHtml(
+              analysis.ai_grounding_status ||
+              "UNKNOWN"
+            )}
+
+          </div>
+
+        </div>
+
+      `;
+
+    })
+    .join("");
+
+}
+
+
+// ============================================================
+// LOAD ONE SAVED ANALYSIS
+// ============================================================
+
+async function loadSingleAnalysis(
+  analysisId
+) {
+
+  try {
+
+    analysisResult.style.display = "block";
+
+    analysisResult.innerHTML = `
+
+      <div class="analysis-panel">
+
+        <div class="panel-title">
+          Database
+        </div>
+
+        <div style="
+          font-size:18px;
+          font-weight:600;
+        ">
+          Loading saved analysis #${analysisId}...
+        </div>
+
+      </div>
+
+      <div class="insights-section">
+
+        <div class="panel-title">
+          Repository Intelligence
+        </div>
+
+        <div id="repository-insights" class="insights-grid">
+          <div class="insight-loading">
+            Loading repository intelligence...
+          </div>
+        </div>
+
+      </div>
+
+    `;
+
+
+    const response = await fetch(
+  `${API_BASE_URL}/analyses/${analysisId}`,
+  {
+    headers: {
+      "Authorization": `Bearer ${getAuthToken()}`
+    }
+  }
+);
+
+
+    loadRepositoryInsights(analysis.id);
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.detail ||
+        "Analysis not found."
+      );
+
+    }
+
+
+    displayAnalysisResult({
+      status: "completed",
+      repository: data.repository,
+      analysis: data
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "Saved analysis error:",
+      error
+    );
+
+
+    showAnalysisError(
+      error.message ||
+      "Could not load saved analysis."
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// STATUS CLASS
+// ============================================================
+
+function getStatusClass(status) {
+
+  if (status === "PASS") {
+    return "";
+  }
+
+  if (status === "WARNING") {
+    return "warning";
+  }
+
+  if (
+    status === "FAIL" ||
+    status === "ERROR"
+  ) {
+    return "fail";
+  }
+
+  return "warning";
+}
+
+
+// ============================================================
+// ERROR DISPLAY
+// ============================================================
+
+function showAnalysisError(message) {
+
+  analysisResult.style.display = "block";
+
+
+  analysisResult.innerHTML = `
+
+    <div class="analysis-panel">
+
+      <div class="panel-title">
+        Analysis error
+      </div>
+
+      <div style="
+        color:var(--danger);
+        font-size:16px;
+        line-height:1.6;
+      ">
+
+        ${escapeHtml(message)}
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+// ============================================================
+// HTML ESCAPING
+// ============================================================
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+
+    .replace(/&/g, "&amp;")
+
+    .replace(/</g, "&lt;")
+
+    .replace(/>/g, "&gt;")
+
+    .replace(/"/g, "&quot;")
+
+    .replace(/'/g, "&#039;");
+
+}
+
+
+// ============================================================
+// INITIAL HISTORY LOAD
+// ============================================================
+
+loadAnalysisHistory();
+async function loadDashboard() {
+    try {
+        const token = localStorage.getItem("repomind_access_token");
+
+        if (!token) {
+            throw new Error("No login token found. Please sign in again.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/dashboard`, {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail || `Dashboard request failed (${response.status}).`
+            );
+        }
+
+        updateDashboard(data);
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+    }
+}
+
+function updateDashboard(data) {
+
+    document.getElementById("stat-total-analyses").textContent =
+        Number(data.total_analyses || 0);
+
+    document.getElementById("stat-repositories").textContent =
+        Number(data.repositories || 0);
+
+    document.getElementById("stat-grounded").textContent =
+        Number(data.grounded_pass || 0);
+
+    document.getElementById("stat-evidence").textContent =
+        Number(data.total_evidence || 0);
+
+    document.getElementById("stat-warnings").textContent =
+        Number(data.total_warnings || 0);
+
+    document.getElementById("stat-failed").textContent =
+        Number(data.grounded_fail || 0);
+
+
+    const total =
+        Number(data.grounded_pass || 0) +
+        Number(data.grounded_warning || 0) +
+        Number(data.grounded_fail || 0);
+
+
+    const passPercent =
+        total > 0
+            ? (data.grounded_pass / total) * 100
+            : 0;
+
+    const warningPercent =
+        total > 0
+            ? (data.grounded_warning / total) * 100
+            : 0;
+
+    const failPercent =
+        total > 0
+            ? (data.grounded_fail / total) * 100
+            : 0;
+
+
+    document.getElementById("grounding-pass-bar").style.width =
+        `${passPercent}%`;
+
+    document.getElementById("grounding-warning-bar").style.width =
+        `${warningPercent}%`;
+
+    document.getElementById("grounding-fail-bar").style.width =
+        `${failPercent}%`;
+
+
+    document.getElementById("grounding-pass-count").textContent =
+        Number(data.grounded_pass || 0);
+
+    document.getElementById("grounding-warning-count").textContent =
+        Number(data.grounded_warning || 0);
+
+    document.getElementById("grounding-fail-count").textContent =
+        Number(data.grounded_fail || 0);
+}
+
+
+const refreshDashboard =
+    document.getElementById("refresh-dashboard");
+
+if (refreshDashboard) {
+    refreshDashboard.addEventListener(
+        "click",
+        loadDashboard
+    );
+}
+
+
+loadDashboard();
+async function loadRepositoryInsights(analysisId) {
+    const container =
+        document.getElementById("repository-insights");
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="insight-loading">
+            Loading repository intelligence...
+        </div>
+    `;
+
+    try {
+        const response = await fetch(
+    `${API_BASE_URL}/analyses/${analysisId}/insights`,
+    {
+        headers: {
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    }
+);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail ||
+                "Could not load repository insights."
+            );
+        }
+
+        renderRepositoryInsights(data);
+
+    } catch (error) {
+
+        console.error(
+            "Repository insights error:",
+            error
+        );
+
+        container.innerHTML = `
+            <div class="insight-loading">
+                Could not load repository intelligence.
+            </div>
+        `;
+    }
+}
+
+
+function renderRepositoryInsights(data) {
+
+    const container =
+        document.getElementById("repository-insights");
+
+    if (!container) {
+        return;
+    }
+
+    if (
+        !data.insights ||
+        data.insights.length === 0
+    ) {
+        container.innerHTML = `
+            <div class="insight-loading">
+                No repository insights available.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML = data.insights
+        .map((insight) => {
+
+            const statusClass =
+                insight.status === "GOOD"
+                    ? "good"
+                    : insight.status === "ATTENTION"
+                        ? "attention"
+                        : "warning";
+
+            return `
+                <div class="insight-card">
+
+                    <div class="insight-name">
+                        ${escapeHtml(insight.name)}
+                    </div>
+
+                    <div class="insight-score">
+                        ${Number(insight.score || 0)}
+                        <span>/100</span>
+                    </div>
+
+                    <div
+                        class="insight-status ${statusClass}"
+                    >
+                        ${escapeHtml(insight.status)}
+                    </div>
+
+                    <div class="insight-summary">
+                        ${escapeHtml(
+                            insight.summary || ""
+                        )}
+                    </div>
+
+                </div>
+            `;
+        })
+        .join("");
+}
+</script>
+</body>
+</html>
+ 
+

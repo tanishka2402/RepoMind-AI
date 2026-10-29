@@ -95,15 +95,33 @@ def create_summary_agent(llm=None) -> Agent:
 		"You communicate technical findings concisely while preserving evidence, limitations, and priorities.",
 		llm,
 	)
-
+def create_master_agent(llm=None) -> Agent:
+    """Create the single orchestrator responsible for the complete report."""
+    return _create_agent(
+        "RepoMind Master Orchestrator",
+        (
+            "Analyze the supplied repository context in one focused pass and produce "
+            "a concise, evidence-grounded report covering repository overview, "
+            "architecture, code quality, documentation, security observations, risks, "
+            "and prioritized recommendations."
+        ),
+        (
+            "You are a senior software engineer coordinating repository analysis. "
+            "Use only the provided context, cite actual file paths, distinguish facts "
+            "from inference, acknowledge missing evidence, avoid duplicating findings, "
+            "and never claim tests or tools ran unless the context proves it."
+        ),
+        llm,
+    )
 
 __all__ = [
-	"create_repository_agent",
-	"create_architecture_agent",
-	"create_code_quality_agent",
-	"create_documentation_agent",
-	"create_security_agent",
-	"create_risk_agent",
-	"create_recommendation_agent",
-	"create_summary_agent",
+    "create_repository_agent",
+    "create_architecture_agent",
+    "create_code_quality_agent",
+    "create_documentation_agent",
+    "create_security_agent",
+    "create_risk_agent",
+    "create_recommendation_agent",
+    "create_summary_agent",
+    "create_master_agent",
 ]

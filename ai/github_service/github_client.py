@@ -37,8 +37,14 @@ from github.GithubException import (
 # parent      -> github_service/
 # parent      -> ai/
 AI_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = AI_DIR.parent
 
 ENV_FILE = AI_DIR / ".env"
+ROOT_ENV_FILE = PROJECT_ROOT / ".env"
+
+# Load shared project settings first. The AI-specific file remains the
+# authoritative source for GitHub credentials when it is present.
+load_dotenv(ROOT_ENV_FILE)
 
 # Explicitly load ai/.env.
 #

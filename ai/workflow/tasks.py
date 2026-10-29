@@ -683,4 +683,50 @@ Do not reproduce raw GitHub JSON.
         agent=agent,
         context=_context(context_tasks),
     )
+def create_master_analysis_task(agent, repository_context):
+    """Create one evidence-first task for the master orchestrator."""
+    return Task(
+        description=f"""
+You are the RepoMind-AI Master Orchestrator. Analyze the repository context below
+with one focused pass. Produce a concise but useful report with exactly these sections:
 
+EXECUTIVE SUMMARY
+REPOSITORY OVERVIEW
+ARCHITECTURE FINDINGS
+CODE QUALITY FINDINGS
+DOCUMENTATION FINDINGS
+SECURITY FINDINGS
+RISK ASSESSMENT
+RECOMMENDATIONS
+
+For each important finding, use:
+CATEGORY: <category>
+TITLE: <short title>
+SEVERITY: critical | high | medium | low | info
+DESCRIPTION: <what is observed and why it matters>
+EVIDENCE: <specific facts and actual file paths from the supplied context>
+RECOMMENDATION: <practical next step or N/A>
+
+Grounding requirements:
+- Use only facts visible in the supplied repository context.
+- Never invent files, functions, frameworks, dependencies, architecture, databases,
+  authentication, vulnerabilities, test results, or performance measurements.
+- Do not infer a technology from general knowledge or a file extension alone.
+- Separate directly observed facts from interpretations and recommendations.
+- For source-code findings, cite the exact path when one is available.
+- If evidence is insufficient, explicitly say that the area could not be assessed.
+- Do not claim the repository is safe merely because no obvious issue is found.
+- Do not repeat the same issue in multiple sections unless the impact differs.
+- Keep the report concise; do not reproduce raw GitHub JSON or large source blocks.
+- Prioritize actionable, high-impact recommendations and tie them to findings.
+
+Repository context:
+{repository_context}
+""",
+        expected_output="""
+A concise, grounded report containing all eight required sections. Each important
+finding includes category, title, severity, description, evidence, and recommendation.
+No unsupported claims.
+""",
+        agent=agent,
+    )

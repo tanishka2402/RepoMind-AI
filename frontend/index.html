@@ -1,6 +1,3 @@
-
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -937,7 +934,49 @@ Index · HTML
     font-size: 27px;
   }
 }
+
+/* Architecture preview — isolated styles; the rest of the site is unchanged */
+#architecture-preview { width:min(1180px,92vw); margin:30px auto 0; position:relative; z-index:3; scroll-margin-top:96px; text-align:left; }
+/* FIX: the preview lives inside section.final (text-align:center). Cytoscape's canvases
+   inherited that and were shifted right by half the container width, clipping the graph. */
+#architecture-graph, #architecture-graph > div { text-align:left; }
+#architecture-graph canvas { left:0 !important; top:0 !important; }
+.arch-preview-card { background:linear-gradient(145deg,rgba(8,17,23,.98),rgba(5,10,14,.98)); border:1px solid rgba(56,240,255,.22); border-radius:12px; padding:22px; box-shadow:0 18px 70px rgba(0,0,0,.24); }
+.arch-preview-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+.arch-preview-title { font-family:var(--display); font-size:clamp(22px,3vw,30px); letter-spacing:-.6px; }
+.arch-preview-meta { color:var(--text-dim); font:11px var(--mono); margin-top:8px; }
+#architecture-summary { color:#b8cbc5; font-size:14px; line-height:1.75; margin:14px 0 18px; max-width:900px; }
+.arch-preview-layout { display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:14px; align-items:stretch; }
+.arch-preview-main { min-width:0; border:1px solid rgba(56,240,255,.18); border-radius:9px; overflow:hidden; background:#050c11; }
+.arch-preview-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px; border-bottom:1px solid rgba(56,240,255,.13); background:rgba(10,20,27,.96); }
+.arch-preview-toolbar button { border:1px solid rgba(130,170,190,.24); background:#0a151d; color:#c8d9e2; border-radius:5px; padding:8px 10px; font:11px var(--mono); cursor:pointer; }
+.arch-preview-toolbar button:hover { border-color:var(--cyan); color:#fff; }
+.arch-preview-legend { display:flex; flex-wrap:wrap; gap:10px; margin-left:auto; color:#aabfc8; font:10px var(--mono); }
+.arch-legend-item { display:inline-flex; align-items:center; gap:5px; }
+.arch-legend-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+#architecture-graph { display:block; position:relative; width:100%; min-width:0; height:520px; border:0; overflow:hidden; background-color:#050c11; background-image:linear-gradient(rgba(70,150,170,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(70,150,170,.045) 1px,transparent 1px); background-size:24px 24px; }
+.arch-preview-side { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.arch-preview-sidecard { border:1px solid rgba(56,240,255,.17); border-radius:9px; background:rgba(8,17,23,.88); padding:15px; }
+.arch-preview-sidecard h3 { font:600 13px var(--display); color:#edf7fa; margin-bottom:12px; }
+.arch-node-name { color:var(--cyan); font:600 14px var(--display); overflow-wrap:anywhere; }
+.arch-node-path { color:var(--text-dim); font:11px var(--mono); margin-top:5px; overflow-wrap:anywhere; }
+.arch-node-help { color:#8da4ae; font-size:12px; line-height:1.65; margin-top:10px; }
+.arch-preview-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; }
+.arch-preview-metric { padding:10px; border:1px solid rgba(56,240,255,.13); border-radius:6px; background:rgba(255,255,255,.018); }
+.arch-preview-metric span { display:block; color:var(--text-dim); font:10px var(--mono); }
+.arch-preview-metric strong { display:block; color:#f0f8fa; font:600 17px var(--display); margin-top:5px; }
+.arch-preview-status { color:var(--text-dim); font:11px var(--mono); margin:13px 0; min-height:18px; line-height:1.6; }
+.arch-preview-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.arch-preview-button { background:var(--green); color:#05070a; border:1px solid var(--green); padding:12px 16px; font:700 12px var(--mono); border-radius:5px; cursor:pointer; transition:transform .15s,box-shadow .15s; }
+.arch-preview-button:hover { transform:translateY(-1px); box-shadow:0 7px 24px rgba(57,255,138,.13); }
+.arch-preview-button.secondary { background:transparent; color:var(--text); border-color:var(--line); }
+.arch-preview-button:disabled { opacity:.55; cursor:wait; transform:none; }
+#architecture-preview[hidden] { display:none !important; }
+@media(max-width:850px){ .arch-preview-layout{grid-template-columns:1fr;} .arch-preview-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));} #architecture-graph{height:420px;} }
+@media(max-width:600px){ #architecture-graph{height:350px;} .arch-preview-card{padding:13px;} .arch-preview-side{grid-template-columns:1fr;} .arch-preview-legend{width:100%;margin:4px 0 0;} }
+
 </style>
+  <script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
 </head>
 
 <body>
@@ -2048,161 +2087,306 @@ const historyList = document.getElementById("history-list");
 
 
 // ============================================================
-// ANALYZE REPOSITORY
+// ARCHITECTURE PREVIEW
 // ============================================================
 
+let currentPreviewRepository = "";
+let architectureGraphInstance = null;
+const architecturePreview = document.createElement("section");
+architecturePreview.id = "architecture-preview";
+architecturePreview.hidden = true;
+architecturePreview.innerHTML = `
+  <div class="arch-preview-card">
+    <div class="arch-preview-head">
+      <div>
+        <div class="panel-title">REPOSITORY STRUCTURE · FAST PREVIEW</div>
+        <h2 class="arch-preview-title">Architecture Preview <span class="status-badge">PREVIEW</span></h2>
+        <div id="architecture-meta" class="arch-preview-meta"></div>
+      </div>
+    </div>
+    <p id="architecture-summary">Enter a GitHub repository URL to preview its structure before running the full AI analysis.</p>
+    <div class="arch-preview-layout">
+      <div class="arch-preview-main">
+        <div class="arch-preview-toolbar">
+          <button id="arch-fit" type="button">Fit diagram</button>
+          <button id="arch-zoom-in" type="button">＋ Zoom in</button>
+          <button id="arch-zoom-out" type="button">− Zoom out</button>
+          <button id="arch-reset" type="button">Reset view</button>
+          <div class="arch-preview-legend">
+            <span class="arch-legend-item"><i class="arch-legend-dot" style="background:#38f0ff"></i>Folders</span>
+            <span class="arch-legend-item"><i class="arch-legend-dot" style="background:#8fb7ff"></i>Files</span>
+            <span class="arch-legend-item"><i class="arch-legend-dot" style="background:#39ff8a"></i>Root</span>
+          </div>
+        </div>
+        <div id="architecture-graph" role="application" aria-label="Interactive repository architecture graph"></div>
+      </div>
+      <aside class="arch-preview-side">
+        <div class="arch-preview-sidecard">
+          <h3>Selected component</h3>
+          <div id="arch-node-name" class="arch-node-name">Repository root</div>
+          <div id="arch-node-path" class="arch-node-path">Select a node in the diagram</div>
+          <p id="arch-node-help" class="arch-node-help">Click a folder or file to inspect its name and path. Drag to reposition; use the controls to zoom or fit the whole diagram.</p>
+        </div>
+        <div class="arch-preview-sidecard">
+          <h3>Repository overview</h3>
+          <div class="arch-preview-metrics">
+            <div class="arch-preview-metric"><span>FILES</span><strong id="arch-file-count">—</strong></div>
+            <div class="arch-preview-metric"><span>BRANCH</span><strong id="arch-branch">—</strong></div>
+            <div class="arch-preview-metric"><span>FOLDERS</span><strong id="arch-folder-count">—</strong></div>
+            <div class="arch-preview-metric"><span>TRUNCATED</span><strong id="arch-truncated">No</strong></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <p id="architecture-status" class="arch-preview-status" role="status" aria-live="polite"></p>
+    <div class="arch-preview-actions">
+      <button id="run-full-analysis" class="arch-preview-button" type="button">Run Full AI Analysis →</button>
+      <button id="hide-architecture-preview" class="arch-preview-button secondary" type="button">Hide preview</button>
+    </div>
+  </div>`;
+document.querySelector(".repo-input").insertAdjacentElement("afterend", architecturePreview);
+
+// The existing repository input now requests a preview first. Full analysis only
+// starts when the user explicitly presses the Run Full AI Analysis button.
+analyzeButton.removeEventListener("click", analyzeRepository);
 analyzeButton.addEventListener("click", analyzeRepository);
-
-
-// Allow Enter key
-repoInput.addEventListener("keydown", (event) => {
-
+repoInput.addEventListener("keydown", event => {
   if (event.key === "Enter") {
+    event.preventDefault();
     analyzeRepository();
   }
-
 });
 
+document.getElementById("hide-architecture-preview").addEventListener("click", () => {
+  architecturePreview.hidden = true;
+});
+document.getElementById("run-full-analysis").addEventListener("click", () => {
+  if (currentPreviewRepository) runFullAnalysis(currentPreviewRepository);
+});
+
+document.getElementById("arch-fit").addEventListener("click", () => fitArchitectureGraph());
+document.getElementById("arch-reset").addEventListener("click", () => fitArchitectureGraph());
+document.getElementById("arch-zoom-in").addEventListener("click", () => zoomArchitectureGraph(1.2));
+document.getElementById("arch-zoom-out").addEventListener("click", () => zoomArchitectureGraph(1 / 1.2));
+
+function fitArchitectureGraph() {
+  if (!architectureGraphInstance) return;
+  architectureGraphInstance.resize();
+  architectureGraphInstance.animate({ fit: { eles: architectureGraphInstance.elements(), padding: 64 }, duration: 250 });
+}
+function zoomArchitectureGraph(factor) {
+  if (!architectureGraphInstance) return;
+  const cy = architectureGraphInstance;
+  const nextZoom = Math.max(cy.minZoom(), Math.min(cy.maxZoom(), cy.zoom() * factor));
+  cy.zoom({ level: nextZoom, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+}
+
+window.addEventListener("resize", () => {
+  if (!architectureGraphInstance || architecturePreview.hidden) return;
+  architectureGraphInstance.resize();
+  // Keep the current view on resize; users can press "Fit diagram" to reframe.
+});
 
 async function analyzeRepository() {
-
   const repository = repoInput.value.trim();
-
-
-  // ----------------------------------------------------------
-  // VALIDATION
-  // ----------------------------------------------------------
-
   if (!repository) {
-
-    showAnalysisError(
-      "Please enter a GitHub repository."
-    );
-
+    showAnalysisError("Please enter a GitHub repository URL.");
     repoInput.focus();
-
     return;
   }
-
-
-  // ----------------------------------------------------------
-  // LOADING STATE
-  // ----------------------------------------------------------
-
+  currentPreviewRepository = repository;
   setAnalyzeLoading(true);
-
-  analysisResult.style.display = "block";
-
-  analysisResult.innerHTML = `
-
-    <div class="analysis-panel">
-
-      <div class="panel-title">
-        RepoMind AI
-      </div>
-
-      <div style="
-        font-size:20px;
-        font-weight:600;
-      ">
-        Analyzing repository...
-      </div>
-
-      <p style="
-        margin-top:10px;
-        color:var(--text-dim);
-        font-size:13px;
-        line-height:1.6;
-      ">
-        Repository acquisition, preprocessing, AI agents,
-        grounding validation and report generation are running.
-      </p>
-
-    </div>
-
-  `;
-
-
-  // ----------------------------------------------------------
-  // API REQUEST
-  // ----------------------------------------------------------
-
+  analysisResult.style.display = "none";
+  architecturePreview.hidden = false;
+  document.getElementById("architecture-summary").textContent = "Scanning the repository tree and arranging a readable architecture map. Full AI analysis has not started.";
+  document.getElementById("architecture-meta").textContent = "Connecting to GitHub…";
+  document.getElementById("architecture-status").textContent = "Loading preview. You can run full analysis after reviewing the diagram.";
+  document.getElementById("run-full-analysis").disabled = true;
+  architecturePreview.scrollIntoView({ behavior: "smooth", block: "start" });
   try {
+    const response = await fetch(`${API_BASE_URL}/architecture-preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify({ repository })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearAuthSession();
+        showLoginScreen();
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+      throw new Error(data.detail || "Could not create architecture preview.");
+    }
+    renderArchitecturePreview(data);
+    document.getElementById("run-full-analysis").disabled = false;
+    document.getElementById("architecture-status").textContent = "Preview ready. Select nodes to inspect them, use Fit diagram to see the full map, or run the full AI analysis.";
+  } catch (error) {
+    console.error("Architecture preview error:", error);
+    document.getElementById("architecture-status").textContent = error.message || "Architecture preview failed.";
+    showAnalysisError(error.message || "Could not create architecture preview.");
+  } finally {
+    setAnalyzeLoading(false);
+  }
+}
 
+function renderArchitecturePreview(data) {
+  document.getElementById("architecture-summary").textContent = data.summary || "This map is based on the repository file tree. Dependency relationships are shown only when returned by the backend.";
+  document.getElementById("architecture-meta").textContent = `${data.repository || currentPreviewRepository} · ${data.file_count ?? "?"} files · branch: ${data.branch || "unknown"}`;
+  document.getElementById("arch-file-count").textContent = data.file_count ?? "—";
+  document.getElementById("arch-branch").textContent = data.branch || "—";
+  document.getElementById("arch-truncated").textContent = data.truncated ? "Yes" : "No";
+  if (!window.cytoscape) throw new Error("Interactive graph library did not load. Check your internet connection.");
+  if (architectureGraphInstance) {
+    architectureGraphInstance.destroy();
+    architectureGraphInstance = null;
+  }
+
+  const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+  const edges = Array.isArray(data.edges) ? data.edges : [];
+  const folderCount = nodes.filter(n => {
+    const kind = String(n.data?.kind || n.data?.type || "").toLowerCase();
+    return kind.includes("folder") || kind.includes("directory");
+  }).length;
+  document.getElementById("arch-folder-count").textContent = folderCount || "—";
+  if (!nodes.length) throw new Error("The preview endpoint returned no graph nodes. Check the backend response format.");
+
+  architectureGraphInstance = cytoscape({
+    container: document.getElementById("architecture-graph"),
+    elements: [...nodes, ...edges],
+    minZoom: 0.35,
+    maxZoom: 2.25,
+    wheelSensitivity: 0.12,
+    motionBlur: false,
+    textureOnViewport: false,
+    // Start with a preset layout so the graph is not auto-laid out before
+    // the layoutstop handler is attached below.
+    layout: { name: "preset", fit: false },
+    style: [
+      { selector: "node", style: {
+        "label": "data(label)", "text-wrap": "wrap", "text-max-width": "128px",
+        "text-valign": "center", "text-halign": "center", "background-color": "#102d3b",
+        "color": "#dcecf2", "font-family": "Inter, sans-serif", "font-size": 10,
+        "width": 116, "height": 48, "shape": "round-rectangle",
+        "border-width": 1, "border-color": "#2688a4", "padding": 5,
+        "overlay-opacity": 0
+      }},
+      { selector: 'node[kind = "repository"], node[type = "repository"]', style: {
+        "background-color": "#0d493a", "border-color": "#39ff8a", "border-width": 2,
+        "width": 270, "height": 62, "font-size": 12, "font-weight": 700, "text-max-width": "250px",
+        "color": "#ffffff"
+      }},
+      { selector: 'node[kind = "folder"], node[type = "folder"], node[kind = "directory"]', style: {
+        "background-color": "#07394a", "border-color": "#38f0ff", "shape": "round-rectangle"
+      }},
+      { selector: 'node[kind = "file"], node[type = "file"]', style: {
+        "background-color": "#101d31", "border-color": "#8fb7ff", "shape": "round-rectangle"
+      }},
+      { selector: "node:selected", style: {
+        "border-color": "#39ff8a", "border-width": 3,
+        "background-color": "#174d3b", "color": "#ffffff"
+      }},
+      { selector: "edge", style: {
+        "label": "data(label)", "curve-style": "bezier", "target-arrow-shape": "triangle",
+        "line-color": "#286d80", "target-arrow-color": "#38f0ff", "arrow-scale": 0.7,
+        "font-size": 8, "color": "#9fb5c0", "text-background-opacity": 1,
+        "text-background-color": "#050c11", "text-background-padding": 2,
+        "width": 1.2, "opacity": 0.8
+      }}
+    ]
+  });
+
+  architectureGraphInstance.on("tap", "node", event => {
+    const node = event.target;
+    const d = node.data();
+    document.getElementById("arch-node-name").textContent = d.label || d.name || "Unnamed component";
+    document.getElementById("arch-node-path").textContent = d.path || d.id || "Path not provided";
+    document.getElementById("arch-node-help").textContent = `${d.kind || d.type || "Component"}${d.description ? " · " + d.description : ""}`;
+    document.getElementById("architecture-status").textContent = "Selected component: " + (d.label || d.name || d.id || "unknown");
+  });
+
+  // Register the layoutstop handler BEFORE running the layout. This is
+  // important: Cytoscape can finish a small layout immediately, before a
+  // listener added afterwards has a chance to fire.
+  const graphToFit = architectureGraphInstance;
+  const rootIds = nodes
+    .filter(n => {
+      const kind = String(n.data?.kind || n.data?.type || "").toLowerCase();
+      return kind === "repository" || kind === "root";
+    })
+    .map(n => n.data?.id)
+    .filter(Boolean);
+
+  const graphLayout = graphToFit.layout({
+    name: "breadthfirst",
+    directed: true,
+    circle: false,
+    maximal: false,
+    spacingFactor: 1.15,
+    avoidOverlap: true,
+    nodeDimensionsIncludeLabels: true,
+    roots: rootIds.length ? rootIds : undefined,
+    padding: 32,
+    fit: false,
+    animate: false
+  });
+
+  graphLayout.one("layoutstop", () => {
+    requestAnimationFrame(() => {
+      if (architectureGraphInstance !== graphToFit) return;
+      graphToFit.resize();
+      graphToFit.fit(graphToFit.elements(), 30);
+      graphToFit.center();
+    });
+  });
+  graphLayout.run();
+}
+
+async function runFullAnalysis(repository) {
+  const runButton = document.getElementById("run-full-analysis");
+  runButton.disabled = true;
+  runButton.textContent = "Running full analysis...";
+  setAnalyzeLoading(true);
+  analysisResult.style.display = "block";
+  analysisResult.innerHTML = `
+    <div class="analysis-panel">
+      <div class="panel-title">RepoMind AI</div>
+      <div style="font-size:20px;font-weight:600;">Running full AI analysis...</div>
+      <p style="margin-top:10px;color:var(--text-dim);font-size:13px;line-height:1.6;">The CrewAI agents are now analyzing the repository. The architecture preview was generated separately.</p>
+    </div>`;
+  try {
     const response = await fetch(`${API_BASE_URL}/analyze`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${getAuthToken()}`
-  },
-
-        body: JSON.stringify({
-          repository: repository
-        })
-      }
-    );
-
-
-    const data = await response.json();
-
-
-    // --------------------------------------------------------
-    // API ERROR
-    // --------------------------------------------------------
-
+      },
+      body: JSON.stringify({ repository })
+    });
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-
-  if (response.status === 401) {
-
-    clearAuthSession();
-    showLoginScreen();
-
-    throw new Error(
-      "Your session has expired. Please sign in again."
-    );
-  }
-
-  throw new Error(
-    data.detail ||
-    "Repository analysis failed."
-  );
-}
-
-
-    // --------------------------------------------------------
-    // DISPLAY RESULT
-    // --------------------------------------------------------
-
+      if (response.status === 401) {
+        clearAuthSession();
+        showLoginScreen();
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+      throw new Error(data.detail || "Repository analysis failed.");
+    }
     displayAnalysisResult(data);
-
-
-    // --------------------------------------------------------
-    // REFRESH HISTORY
-    // --------------------------------------------------------
-
     await loadAnalysisHistory();
-
-
+    analysisResult.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
-
-    console.error(
-      "RepoMind AI error:",
-      error
-    );
-
-    showAnalysisError(
-      error.message ||
-      "Could not connect to the RepoMind-AI backend."
-    );
-
+    console.error("RepoMind AI error:", error);
+    showAnalysisError(error.message || "Could not connect to the RepoMind-AI backend.");
   } finally {
-
     setAnalyzeLoading(false);
-
+    runButton.disabled = false;
+    runButton.textContent = "Run Full AI Analysis →";
   }
-
 }
-
 
 // ============================================================
 // BUTTON LOADING STATE
@@ -2705,8 +2889,6 @@ async function loadSingleAnalysis(
 );
 
 
-    loadRepositoryInsights(analysis.id);
-
     const data = await response.json();
 
 
@@ -2725,6 +2907,8 @@ async function loadSingleAnalysis(
       repository: data.repository,
       analysis: data
     });
+
+    loadRepositoryInsights(analysisId);
 
 
   } catch (error) {
@@ -2829,18 +3013,22 @@ function escapeHtml(value) {
 // INITIAL HISTORY LOAD
 // ============================================================
 
+
 loadAnalysisHistory();
+
 async function loadDashboard() {
     try {
-        const token = localStorage.getItem("repomind_access_token");
+        const token = getAuthToken();
 
         if (!token) {
-            throw new Error("No login token found. Please sign in again.");
+            throw new Error("You are not logged in. Please log in again.");
         }
 
         const response = await fetch(`${API_BASE_URL}/dashboard`, {
+            method: "GET",
             headers: {
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
             }
         });
 
@@ -2856,8 +3044,33 @@ async function loadDashboard() {
 
     } catch (error) {
         console.error("Dashboard error:", error);
+
+        // Display the error instead of leaving the dashboard silently blank.
+        const dashboard = document.querySelector(".dashboard-section");
+
+        if (dashboard) {
+            let errorBox = document.getElementById("dashboard-error");
+
+            if (!errorBox) {
+                errorBox = document.createElement("div");
+                errorBox.id = "dashboard-error";
+                errorBox.className = "history-empty";
+                dashboard.prepend(errorBox);
+            }
+
+            errorBox.textContent = error.message;
+        }
     }
 }
+
+const refreshDashboard = document.getElementById("refresh-dashboard");
+
+if (refreshDashboard) {
+    refreshDashboard.addEventListener("click", loadDashboard);
+}
+
+loadDashboard();
+
 
 function updateDashboard(data) {
 
@@ -2923,18 +3136,6 @@ function updateDashboard(data) {
 }
 
 
-const refreshDashboard =
-    document.getElementById("refresh-dashboard");
-
-if (refreshDashboard) {
-    refreshDashboard.addEventListener(
-        "click",
-        loadDashboard
-    );
-}
-
-
-loadDashboard();
 async function loadRepositoryInsights(analysisId) {
     const container =
         document.getElementById("repository-insights");
@@ -3050,5 +3251,3 @@ function renderRepositoryInsights(data) {
 </script>
 </body>
 </html>
- 
-

@@ -1,229 +1,102 @@
 
 """
-RepoMind-AI
-Main multi-agent CrewAI workflow.
+Fast single-pass CrewAI workflow for RepoMind-AI.
 
-The workflow runs repository analysis agents sequentially
-and passes the appropriate previous findings to each stage.
+Performance improvements:
+- Runs one comprehensive analysis task instead of eight sequential tasks.
+- Reuses the existing summary agent and master-analysis task.
+- Keeps evidence-first analysis and all eight report sections.
+- Logs elapsed time for agent initialization and model execution.
+
+Repository fetching, static security scanning, validation,
+grounded report generation, scoring, and persistence remain
+in their existing backend layers.
 """
 
+import logging
 import time
 
 from crewai import Crew, Process
 
-from agents import (
-    create_repository_agent,
-    create_architecture_agent,
-    create_code_quality_agent,
-    create_documentation_agent,
-    create_security_agent,
-    create_risk_agent,
-    create_recommendation_agent,
-    create_summary_agent,
-)
+from agents import create_summary_agent
+from workflow.tasks import create_master_analysis_task
 
-from workflow.tasks import (
-    create_repository_task,
-    create_architecture_task,
-    create_code_quality_task,
-    create_documentation_task,
-    create_security_task,
-    create_risk_task,
-    create_recommendation_task,
-    create_summary_task,
-)
+
+logger = logging.getLogger(__name__)
 
 
 class RepoMindCrew:
-    """Main orchestrator for RepoMind-AI agents."""
+    """Run a focused, single-pass repository analysis."""
 
     def __init__(self, repository_context: str):
         self.repository_context = repository_context
 
     def run(self):
-        """Create and execute the RepoMind-AI workflow."""
-
         total_start = time.perf_counter()
 
-        print("\n" + "=" * 60)
-        print("RepoMind-AI: Initializing multi-agent analysis")
-        print("=" * 60)
+        logger.info("RepoMind-AI: Starting single-pass analysis")
 
-        # ---------------------------------------------------------
-        # Create agents
-        # ---------------------------------------------------------
+        # --------------------------------------------------------
+        # 1. Initialize one agent
+        # --------------------------------------------------------
 
-        repository_agent = create_repository_agent()
-        architecture_agent = create_architecture_agent()
-        code_quality_agent = create_code_quality_agent()
-        documentation_agent = create_documentation_agent()
-        security_agent = create_security_agent()
-        risk_agent = create_risk_agent()
-        recommendation_agent = create_recommendation_agent()
-        summary_agent = create_summary_agent()
+        stage_start = time.perf_counter()
 
-        # ---------------------------------------------------------
-        # Repository analysis
-        # ---------------------------------------------------------
+        agent = create_summary_agent()
 
-        repository_task = create_repository_task(
-            repository_agent,
-            self.repository_context,
+        logger.info(
+            "RepoMind timing | stage=agent_initialization | "
+            "elapsed_seconds=%.3f",
+            time.perf_counter() - stage_start,
         )
 
-        # ---------------------------------------------------------
-        # Architecture analysis
-        # ---------------------------------------------------------
+        # --------------------------------------------------------
+        # 2. Build one comprehensive task
+        # --------------------------------------------------------
 
-        architecture_task = create_architecture_task(
-            architecture_agent,
-            self.repository_context,
-            context_tasks=[
-                repository_task,
-            ],
+        task = create_master_analysis_task(
+            agent=agent,
+            repository_context=self.repository_context,
         )
 
-        # ---------------------------------------------------------
-        # Code quality analysis
-        # ---------------------------------------------------------
-
-        code_quality_task = create_code_quality_task(
-            code_quality_agent,
-            self.repository_context,
-            context_tasks=[
-                repository_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Documentation analysis
-        # ---------------------------------------------------------
-
-        documentation_task = create_documentation_task(
-            documentation_agent,
-            self.repository_context,
-            context_tasks=[
-                repository_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Security analysis
-        # ---------------------------------------------------------
-
-        security_task = create_security_task(
-            security_agent,
-            self.repository_context,
-            context_tasks=[
-                repository_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Risk analysis
-        # ---------------------------------------------------------
-
-        risk_task = create_risk_task(
-            risk_agent,
-            self.repository_context,
-            context_tasks=[
-                repository_task,
-                architecture_task,
-                code_quality_task,
-                documentation_task,
-                security_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Recommendations
-        # ---------------------------------------------------------
-
-        recommendation_task = create_recommendation_task(
-            recommendation_agent,
-            self.repository_context,
-            context_tasks=[
-                architecture_task,
-                code_quality_task,
-                documentation_task,
-                security_task,
-                risk_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Final summary
-        # ---------------------------------------------------------
-
-        summary_task = create_summary_task(
-            summary_agent,
-            self.repository_context,
-            context_tasks=[
-                architecture_task,
-                code_quality_task,
-                documentation_task,
-                security_task,
-                risk_task,
-                recommendation_task,
-            ],
-        )
-
-        # ---------------------------------------------------------
-        # Create Crew
-        # ---------------------------------------------------------
+        # --------------------------------------------------------
+        # 3. Execute one LLM analysis task
+        # --------------------------------------------------------
 
         crew = Crew(
-            agents=[
-                repository_agent,
-                architecture_agent,
-                code_quality_agent,
-                documentation_agent,
-                security_agent,
-                risk_agent,
-                recommendation_agent,
-                summary_agent,
-            ],
-            tasks=[
-                repository_task,
-                architecture_task,
-                code_quality_task,
-                documentation_task,
-                security_task,
-                risk_task,
-                recommendation_task,
-                summary_task,
-            ],
+            agents=[agent],
+            tasks=[task],
             process=Process.sequential,
-            verbose=True,
+            verbose=False,
         )
 
-        # ---------------------------------------------------------
-        # Execute workflow and measure duration
-        # ---------------------------------------------------------
+        logger.info("RepoMind-AI: Running master analysis")
 
-        print("\nStarting CrewAI analysis...")
-        analysis_start = time.perf_counter()
+        llm_start = time.perf_counter()
 
         try:
             result = crew.kickoff()
-        except Exception as exc:
-            elapsed = time.perf_counter() - analysis_start
 
-            print("\n" + "=" * 60)
-            print("RepoMind-AI analysis failed")
-            print(f"Elapsed time before failure: {elapsed:.2f} seconds")
-            print(f"Error: {exc}")
-            print("=" * 60)
-
+        except Exception:
+            logger.exception(
+                "RepoMind-AI master analysis failed after %.2f seconds",
+                time.perf_counter() - llm_start,
+            )
             raise
 
-        analysis_elapsed = time.perf_counter() - analysis_start
+        llm_elapsed = time.perf_counter() - llm_start
         total_elapsed = time.perf_counter() - total_start
 
-        print("\n" + "=" * 60)
-        print("RepoMind-AI analysis timing")
-        print(f"CrewAI execution: {analysis_elapsed:.2f} seconds")
-        print(f"Total workflow time: {total_elapsed:.2f} seconds")
-        print("=" * 60)
+        logger.info(
+            "RepoMind timing | stage=master_analysis | "
+            "elapsed_seconds=%.3f",
+            llm_elapsed,
+        )
+
+        logger.info(
+            "RepoMind timing | stage=crew_total | "
+            "elapsed_seconds=%.3f",
+            total_elapsed,
+        )
 
         return result
